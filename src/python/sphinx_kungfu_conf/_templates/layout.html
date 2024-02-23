@@ -1,0 +1,89 @@
+{% extends "!layout.html" %}
+
+{% block footer %} {{ super() }}
+
+  <!-- <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // 找到 .wy-side-nav-search 下的 img 元素
+        var searchImg = document.querySelector('.wy-side-nav-search img');
+
+        // 如果找到了 img 元素，添加点击事件
+        if (searchImg) {
+            searchImg.addEventListener('click', function () {
+                // 设置要跳转的链接
+                window.location.href = 'https://www.kungfu-trader.com/';
+            });
+        }
+    });
+  </script> -->
+
+  <!-- <div class="return-home">
+    <a href="https://www.kungfu-trader.com/" class="return-home-link">返回首页</a>
+  </div>
+
+
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // 找到返回首页按钮
+        var returnHomeButton = document.querySelector('.return-home-link');
+
+        // 添加点击事件处理程序
+        if (returnHomeButton) {
+            returnHomeButton.addEventListener('click', function (event) {
+                // 阻止默认链接跳转行为
+                event.preventDefault();
+
+                // 执行跳转到首页操作
+                window.location.href = 'https://www.kungfu-trader.com/';
+            });
+        }
+    });
+ </script> -->
+
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // 找到包含所有页面 logo 图片的父元素
+        var parentContainer = document.querySelector('.wy-side-nav-search');
+
+        // 添加点击事件处理程序到父元素
+        parentContainer.addEventListener('click', function (event) {
+            // 判断点击的是 logo 图片
+            if (event.target.matches('.wy-side-nav-search img')) {
+                event.preventDefault();
+                // 设置要跳转的链接
+                window.location.href = 'https://www.kungfu-trader.com/';
+            }
+        });
+    });
+
+  </script>
+  
+
+  <style>
+         .wy-nav-content { max-width: none; }
+         .wy-side-nav-search, .wy-nav-top {
+            background: #434242;
+        }
+        /* .wy-side-nav-search>a img.logo {
+            width: 75px;
+            height: auto;
+        } */
+        .wy-side-nav-search>div.version {
+            color: #ffffff;
+        }
+
+        /* .return-home {
+            position: absolute;
+            top: 31px;
+            right: 170px;
+            z-index: 1000;
+            color: #3089c3;
+        } */
+
+  </style>
+  
+
+
+{% endblock %}

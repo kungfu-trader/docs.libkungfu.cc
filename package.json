@@ -1,0 +1,43 @@
+{
+  "name": "@kungfu-trader/libkungfu-docs-workspaces",
+  "author": {
+    "name": "kungfu-trader",
+    "email": "info@kungfu.link"
+  },
+  "description": "Kungfu Lib Docs Workspaces",
+  "license": "Apache-2.0",
+  "private": true,
+  "workspaces": [
+    "docs/*"
+  ],
+  "engines": {
+    "node": ">=16 <17"
+  },
+  "scripts": {
+    "foreach": "wsrun --serial --exclude-missing --fast-exit",
+    "prebuild": "poetry lock -n --no-update && poetry install -n",
+    "build": "node lib/sphinx.js build",
+    "package": "echo noop",
+    "clean": "node lib/sphinx.js clean",
+    "format": "yarn format:py && yarn format:js",
+    "format:py": "poetry run black src/python",
+    "format:js": "prettier --write --parser typescript \"./lib/*.js\"",
+    "rebuild": "yarn clean && yarn build",
+    "reformat": "prettier --write --parser typescript",
+    "reformat:ts": "yarn reformat \"(framework|extensions|developer|artifact)/**/*.ts?(x)\"",
+    "reformat:js": "yarn reformat \"(framework|extensions|developer|artifact)/**/*.js\""
+  },
+  "dependencies": {
+    "lerna": "^4.0.0",
+    "semver": "^7.3.8",
+    "sywac": "^1.3.0",
+    "wsrun": "^5.0.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/parser": "^4.29.0",
+    "@typescript-eslint/eslint-plugin": "^4.29.0",
+    "eslint": "^7.14.0",
+    "prettier": "^2.7.0",
+    "typescript": "~4.4.0"
+  }
+}

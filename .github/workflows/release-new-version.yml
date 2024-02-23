@@ -1,0 +1,27 @@
+name: Release - New Version
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - alpha/v*/v*
+      - release/v*/v*
+
+jobs:
+  release:
+    if: ${{ github.event.pull_request.merged }}
+    uses: kungfu-trader/workflows/.github/workflows/.release-new-version.yml@v1
+    with:
+      node-version: "16"
+      bucket-staging-user: kungfu-docs-staging
+      bucket-release-user: kungfu-docs
+      publish-aws-ci: false
+      clean-release-user: true
+      cloudfront-id-user: E6UZACOQZHEEV
+      cloudfront-paths-user: /*
+    secrets:
+      AWS_CI_ACCESS_KEY_ID: ${{ secrets.AWS_CI_ACCESS_KEY_ID }}
+      AWS_CI_SECRET_ACCESS_KEY: ${{ secrets.AWS_CI_SECRET_ACCESS_KEY }}
+      AWS_USER_ACCESS_KEY_ID: ${{ secrets.AWS_USER_ACCESS_KEY_ID }}
+      AWS_USER_SECRET_ACCESS_KEY: ${{ secrets.AWS_USER_SECRET_ACCESS_KEY }}
+      GITHUB_PUSH_TOKEN: ${{ secrets.KUNGFU_GITHUB_TOKEN }}
