@@ -17,7 +17,7 @@ jobs:
       bucket-release-user: kungfu-docs
       publish-aws-ci: false
       clean-release-user: true
-      cloudfront-id-user: E6UZACOQZHEEV
+      cloudfront-id-user: E1UTS4IZ0ZNABD
       cloudfront-paths-user: /*
     secrets:
       AWS_CI_ACCESS_KEY_ID: ${{ secrets.AWS_CI_ACCESS_KEY_ID }}
