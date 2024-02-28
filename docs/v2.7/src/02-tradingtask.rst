@@ -1,4 +1,4 @@
-交易任务
+快速开始
 ==============
 
 .. include:: ../../shared/v3/016-tradingtask.rst
