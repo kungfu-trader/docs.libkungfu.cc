@@ -827,7 +827,7 @@ package.json::
 .. Broker对接范例
 .. ^^^^^^^^^^^^^^^^^^^^^^
 
-.. 源码目录结构::
+.. 源码目录结构:
 
 ..     kfx-broker-xtp-demo/
 ..     ├── src/
@@ -836,7 +836,7 @@ package.json::
 ..     └── package.json    # 编译配置信息
 
 
-.. 编译后文件目录结构::
+.. 编译后文件目录结构:
 
 ..     kfx-broker-xtp-demo/
 ..     ├── src/
