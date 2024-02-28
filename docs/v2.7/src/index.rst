@@ -7,13 +7,13 @@
    :caption: 目录
 
    01-intro.rst
-   06-tradingtask.rst
-   15-kfs.rst
-   16-example.rst
-   07-api.rst
-   17-configuration_information.rst
-   10-development.rst
-   11-changelog.rst
+   02-tradingtask.rst
+   03-kfs.rst
+   04-example.rst
+   05-api.rst
+   06-configuration_information.rst
+   07-development.rst
+   08-changelog.rst
    
 
 附录
