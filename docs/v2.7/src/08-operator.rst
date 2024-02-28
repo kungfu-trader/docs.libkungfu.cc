@@ -1,1 +1,0 @@
-.. include:: ../../shared/v3/operator.rst
