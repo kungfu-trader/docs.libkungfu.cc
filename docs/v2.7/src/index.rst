@@ -20,7 +20,7 @@
    09-encryption-packaging.rst
    10-development.rst
    11-changelog.rst
-
+   15-kfs.rst
 
 附录
 #######
