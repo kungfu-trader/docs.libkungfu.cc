@@ -45,7 +45,7 @@ description
 kungfuBuild
 ~~~~~~~~~~~~~
 
-[重要] 为 cpp, python 插件打包指定依赖
+为 cpp, python 插件打包指定依赖
 
 .. code-block:: python
     :linenos:
@@ -64,7 +64,7 @@ kungfuBuild
 kungfuConfig
 ~~~~~~~~~~~~~
 
-[重要] 主要配置项, 针对strategy(策略/算法), td(交易柜台), md(行情柜台)分场景配置
+主要配置项, 针对strategy(策略/算法), td(交易柜台), md(行情柜台)分场景配置
 
 key: 唯一key, 例如功夫app中存在十个插件, 这十个插件的key不能重复, 且对于柜台与交易任务，该key与目录结构存在对应关系
 
@@ -82,13 +82,13 @@ config: 插件表单主要配置项（插件表单是指通过功夫app或者cli
             "strategy": {
                 "type": "trade",
                 "settings": [
-                {
-                    "key": "accountId",
-                    "name": "twap.accountId",
-                    "type": "td",
-                    "required": true,
-                    "primary": true
-                }
+                    {
+                        "key": "accountId",
+                        "name": "twap.accountId",
+                        "type": "td",
+                        "required": true,
+                        "primary": true
+                    }
                 ]
             }
         }
@@ -170,3 +170,59 @@ config: 插件表单主要配置项（插件表单是指通过功夫app或者cli
             }
         }
 
+
+type: 对于柜台有效，标记柜台支持的交易类型，可选项为  
+    | stock #股票
+    | stockoption #股票期权
+    | techstock #科技股
+    | future #期货
+    | bond #债券
+    | fund #基金
+    | index #指数
+    | repo #债券
+    | crypto #加密货币
+    | cryptofuture #加密货币合约
+    | cryptoufuture #加密货币u本位合约
+    | multi #多品种
+
+
+settings: 对应表单配置项
+
+    key: 表单项的key
+
+    name: 表单项的name
+
+    type: 可选项 
+        | str
+        | password
+        | file # string
+        | files # string[]
+        | directory # string
+        | folder # string
+        | table # any[]
+        | rangePicker #string[]
+        | dateTimePicker #string
+        | datePicker #string
+        | timePicker #string
+        | select
+        | multiSelect
+        | radio
+        | checkbox
+        | bool
+        | int
+        | float
+        | percent
+    
+    options: 其中当type字段类型为 select/checkbox/multiSelect/radio 时有效，对应结构
+
+    .. code-block:: python
+        :linenos:
+
+            {
+                "value": # string | number;
+                "label": # string | number;
+                "type": # 'tag' | 'text';
+            }
+
+    tips: 备注
+    errMsg: 报错信息
