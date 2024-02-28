@@ -385,108 +385,76 @@ Python交易任务范例
 
 源码目录结构::
 
-    kfx-task-excel-demo/
+    kfx-task-condition-demo/
     ├── src/
     │   └── python
-    |       └── Excel
+    |       └── ConditionOrder
     |           └── __init__.py                 # python交易任务策略代码
     ├── README.md                               # 交易任务说明
     └── package.json                            # 编译配置信息
 
 
+
 编译后文件目录结构::
 
-    kfx-task-excel-demo/
+    kfx-task-condition-demo/
     ├── src/
     │   └── python
-    |       └── Excel
+    |       └── ConditionOrder
     |           └── __init__.py                 
     ├── README.md                               
     ├── package.json         
     ├── __pypackages__/                                         # Python模块库, 自动生成
     ├── dist/                                                   # 编译打包出来的二进制文件
-    |   └── Excel
-    |       └── Excel.cp39-win_amd64.pyd                        # 二进制文件
+    |   └── ConditionOrder
+    |       └── ConditionOrder.cp39-win_amd64.pyd                        # 二进制文件
     ├── pdm.lock                                                # build后下载依赖库自动生成的文件
-    └── pyproject.toml                                          # build后下载依赖库自动生成的文件
+    └── pyproject.toml                                          # build后下载依赖库自动生成的文件    
 
 
-package.json::
-    
-    {
-        "name": "@kungfu-trader/kfx-task-excel",
-        "description": "Kungfu Extension - Excel",
-        "author": "kungfu-trader",
-        "license": "Apache-2.0",
-        "kungfuBuild": {
-            "python": {
-                "dependencies": {
-                    "openpyxl": ">=3.0.10"
-                }
-            }
-        },
-        "kungfuConfig": {
-            "key": "Excel",
-            "name": "Excel下单",
-            "ui_config": {},
-            "language": {
-                "zh-CN": {
-                    "accountId": "账户",
-                    "marketSource": "行情",
-                    "taskExcel": "下单Excel",
-                    "taskExcelTip": "Excel文件目前只支持一个sheet表.\n表格第一行为字段名, 皆为英文, 需要包括以下字段: \ntime: 下单时间, 字符串, 格式为 HH: mm: ss (24小时制, 时分秒皆占两位), 例: 01: 02: 03.\ninstrument_id: 标的ID, 字符串.\nexchange_id: 交易所ID, 字符串.\nlimit_price: 限价, 浮点数.\nvolume: 下单量, 整数.\nprice_type: 报单类型, 字符串, 可填 Limit、Any、FakBest5、ForwardBest、ReverseBest、Fak、Fok.\nside: 买卖, 字符串, 可填 Buy、Sell、Lock、Unlock、Exec、Drop、MarginTrade、ShortSell、RepayMargin、RepayStock.\noffset: 开平, 字符串, 可填 Open、Close、CloseToday、CloseYesterday.\nhedge_flag: 投机套保标识, 字符串, 目前只可填Speculation, 也可不填, 默认为该值.\nis_swap: 互换, 布尔值字符串, 可填 True 或 False, 也可不填, 默认为False."
-                },
-                "en-US": {
-                    "excel": "Excel Task",
-                    "accountId": "Account ID",
-                    "marketSource": "Market Source",
-                    "taskExcel": "Excel File",
-                    "taskExcelTip": "Only one sheet is currently supported.\nThe first row of the form contains the following fields: \ntime: place order time, string, the format is HH: mm: ss (In 24-hour system, time, minutes and seconds occupy two places), like: 01: 02: 03.\ninstrument_id: instrument ID, string.\nexchange_id: exchange ID, string.\nlimit_price: limit price, float.\nvolume: place order volume, int.\nprice_type: order price type, string, allow: Limit、Any、FakBest5、ForwardBest、ReverseBest、Fak、Fok.\nside: side, string, allow: Buy、Sell、Lock、Unlock、Exec、Drop、MarginTrade、ShortSell、RepayMargin、RepayStock.\noffset: offset, string, allow: Open、Close、CloseToday、CloseYesterday.\nhedge_flag: hedge flag, string, current only allow 'Speculation', also can be empty, default is this value.\nis_swap: whether swap open or not, boolean, allow: True or False, also can be empty, default is False."
-                }
-            },
-            "config": {
-                "strategy": {
-                    "type": "trade",
-                    "settings": [
-                    {
-                        "key": "accountId",
-                        "name": "Excel.accountId",
-                        "type": "td",
-                        "required": true,
-                        "showArg": true
-                    },
-                    {
-                        "key": "taskExcel",
-                        "name": "Excel.taskExcel",
-                        "type": "file",
-                        "required": true,
-                        "showArg": true,
-                        "tip": "Excel.taskExcelTip"
-                    }
-                    ]
-                }
-            }
-        }
-    }
-
-
+交易任务实现代码 __init__.py
 
 .. code-block:: python
     :linenos:
-        
-    # -*- coding: UTF-8 -*-
-    from multiprocessing import context
-    import time
-    import datetime
-    import json
-    import pandas as pd
-    import numpy as np
+
     import kungfu
     from kungfu.wingchun.constants import *
+    import json
+    import time
+    import math
+    import threading
+    from datetime import datetime
+    from pykungfu import wingchun as wc
 
-    TIMER_DELAY = 1000000
+    yjj = kungfu.__binding__.yijinjing
 
-    lf = kungfu.__binding__.longfist
+
+    class Config(object):
+        def __init__(self, param):
+            sourceAccountList = param["accountId"].split("_")
+            self.marketSource = param["marketSource"]
+            exchangeTicker = param["ticker"].split("_")
+            self.side = Side(param["side"])
+            self.offset = Offset(param["offset"])
+            self.priceType = PriceType(param["priceType"])
+            self.volume = int(param["volume"])
+            self.maxLot = int(param.get("maxLot", 0))
+            self.startTime = str_to_nanotime(param.get("startTime", "0"))
+            self.orderPrice = param["orderPrice"]
+            self.source = ""
+            if len(sourceAccountList) == 2 and len(exchangeTicker) == 5:
+                self.source = sourceAccountList[0]
+                self.account = sourceAccountList[1]
+                self.exchange = exchangeTicker[0]
+                self.ticker = exchangeTicker[1]
+            self.priceCondition = param["priceCondition"]
+
+
+    class PriceCondition(object):
+        def __init__(self, param):
+            self.currentPrice = int(param["currentPrice"])
+            self.compare = int(param["compare"])
+            self.triggerPrice = float(param["triggerPrice"])
 
 
     def update_strategy_state(state, value, context):
@@ -507,314 +475,451 @@ package.json::
         context.update_strategy_state(strategy_state)
 
 
-    def deal_key(key):
-        return key.upper() if isinstance(key, str) else key
-
-
-    def deal_instrument_id(value):
-        return str(value)
-
-
-    def deal_exchange_id(value):
-        all_exchange_id = ["BSE","SSE","SZE","SHFE","DCE","CZCE","CFFEX","INE","GFEX"]
-        resolved_exchange_id = deal_key(value)
-
-        if resolved_exchange_id in all_exchange_id:
-            return resolved_exchange_id
-
-        return None
-
-
-    def deal_limit_price(value):
-        return float(value)
-
-
-    def deal_volume(value):
-        return int(value)
-
-
-    def deal_price_type(key):
-        switcher = {
-            "LIMIT": PriceType.Limit,
-            "ANY": PriceType.Any,
-            "FAKBEST5": PriceType.FakBest5,
-            "FORWARDBEST": PriceType.ForwardBest,
-            "REVERSEBEST": PriceType.ReverseBest,
-            "FAK": PriceType.Fak,
-            "FOK": PriceType.Fok,
-        }
-        key = deal_key(key)
-        return switcher.get(key)
-
-
-    def deal_side(key):
-        switcher = {
-            "BUY": Side.Buy,
-            "SELL": Side.Sell,
-            "LOCK": Side.Lock,
-            "UNLOCK": Side.Unlock,
-            "EXEC": Side.Exec,
-            "DROP": Side.Drop,
-            "MARGINTRADE": Side.MarginTrade,
-            "SHORTSELL": Side.ShortSell,
-            "REPAYMARGIN": Side.RepayMargin,
-            "REPAYSTOCK": Side.RepayStock,
-        }
-        key = deal_key(key)
-        return switcher.get(key)
-
-
-    def deal_offset(key):
-        switcher = {
-            "OPEN": Offset.Open,
-            "CLOSE": Offset.Close,
-            "CLOSETODAY": Offset.CloseToday,
-            "CLOSEYESTERDAY": Offset.CloseYesterday,
-        }
-        key = deal_key(key)
-        return switcher.get(key)
-
-
-    def deal_hedge_flag(key):
-        switcher = {
-            "SPECULATION": HedgeFlag.Speculation,
-        }
-
-        if isinstance(key, str):
-            key = deal_key(key)
-            return switcher.get(key)
-
-        if np.isnan(key):
-            return switcher["SPECULATION"]
-
-        return None
-
-
-    def deal_is_swap(key):
-        switcher = {
-            "TRUE": True,
-            "FALSE": False,
-        }
-
-        if isinstance(key, str):
-            key = deal_key(key)
-            return switcher.get(key)
-
-        if np.isnan(key):
-            return switcher["FALSE"]
-
-        return None
-
-
-    def validator_switcher(key, value, context):
-        parser_switcher = {
-            "instrument_id": deal_instrument_id,
-            "exchange_id": deal_exchange_id,
-            "limit_price": deal_limit_price,
-            "volume": deal_volume,
-            "price_type": deal_price_type,
-            "side": deal_side,
-            "offset": deal_offset,
-            "hedge_flag": deal_hedge_flag,
-            "is_swap": deal_is_swap,
-        }
-
-        parser = parser_switcher.get(key)
-
-        if parser is not None:
-            resolved_value = parser(value)
-            if resolved_value is not None:
-                return resolved_value
-            else:
-                update_strategy_state(
-                    lf.enums.StrategyState.Error, f"列 '{key}' 的值 {value} 解析异常.", context
-                )
-                context.has_parse_error = True
-                context.req_deregister()
-        else:
-            return value
-
-
-    def validate_exchange_instrument(task, instruments_map, context):
-        instrument_id = task.get("instrument_id")
-        exchange_id = task.get("exchange_id")
-        cur_map_key = str(exchange_id).lower() + str(instrument_id).lower()
-
-        return instruments_map.get(cur_map_key)
-
-
-    def parse_tasks(tasks_df, context):
-        tasks = tasks_df.to_dict("records")
-        resolved_tasks = []
-        for index, task in enumerate(tasks):
-            resolved = {k: validator_switcher(k, v, context) for k, v in task.items()}
-            cur_instrument = validate_exchange_instrument(
-                resolved, context.instruments_map, context
-            )
-            if cur_instrument is not None:
-                resolved["instrument_id"] = cur_instrument.instrument_id
-                resolved["exchange_id"] = cur_instrument.exchange_id
-            else:
-                context.log.warn(
-                    f"第 {str(index + 1)} 单 instrument_id {resolved.get('instrument_id')} 或 exchange_id {resolved.get('exchange_id')} 填写错误, 请确认."
-                )
-            resolved_tasks.append(resolved)
-            context.log.info(
-                f"第 {str(index + 1)} 单: {' '.join([f'{str(k)}: {str(v)}' for k, v in resolved.items()])}"
-            )
-        return resolved_tasks
-
-
-    def time_parser(time_strs):
-        return pd.to_datetime(time_strs, format="%H:%M:%S").dt.time
-
-
-    def load_excel(excel_path, context):
-        if not (excel_path.endswith(".xlsx") or excel_path.endswith(".xls")):
-            update_strategy_state(
-                lf.enums.StrategyState.Error, "文件格式不是Excel,解析失败.", context
-            )
-            context.req_deregister()
-            return False
-        tasks_df = pd.read_excel(excel_path, dtype=str)
-        tasks_df["time"] = time_parser(tasks_df["time"])
-        tasks_count = tasks_df.shape[0]
-        context.tasks_df = tasks_df
-        context.tasks = parse_tasks(tasks_df, context)
-        context.tasks_count = tasks_count
-        context.counts_to_fill = tasks_count
-        if not context.has_parse_error:
-            context.log.info("Excel文件加载完成.")
-            return True
-        else:
-            context.log.error("Excel文件解析失败.")
-            context.req_deregister()
-            return False
-
-
-    def check_all_task_time(context):
-        now = datetime.datetime.now()
-        for task in context.tasks:
-            task_time = task["time"]
-            if (
-                not task.get("order_status")
-                and task_time.hour == now.hour
-                and task_time.minute == now.minute
-                and task_time.second == now.second
-            ):
-                task["order_status"] = make_order(context, task)
-                if task["order_status"]:
-                    context.counts_to_fill -= 1
-
-        if context.counts_to_fill == 0:
-            context.log.info("所有任务完成.")
-            context.req_deregister()
-
-
-    def start_timer(context):
-        global TIMER_DELAY
-
-        def cb(ctx, event):
-            check_all_task_time(ctx)
-            context.add_timer(time.time_ns() + TIMER_DELAY, cb)
-
-        context.add_timer(time.time_ns() + TIMER_DELAY, cb)
-
-
-    def set_instruments_map(context):
-        book = context.get_account_book(context.SOURCE, context.ACCOUNT)
-        instruments = book.instruments
-        context.instruments_map = {}
-        for key in instruments:
-            instrument = instruments[key]
-            map_key = (
-                str(instrument.exchange_id).lower() + str(instrument.instrument_id).lower()
-            )
-            context.instruments_map[map_key] = instrument
-
-
     def pre_start(context):
-        context.SOURCE = ""
-        context.ACCOUNT = ""
-        context.has_parse_error = False
-        context.quote_map = {}
+        context.MIN_VOL = 0
+        context.time_trigger = False
+        context.price = -1.0
+        context.order_placed = False
         context.log.info("参数 {}".format(context.arguments))
-        args = json.loads(context.arguments)
-        sourceAccountList = args["accountId"].split("_")
-        context.tasks_excel_path = args["taskExcel"]
+        args_dict = json.loads(context.arguments)
 
-        if len(sourceAccountList) == 2:
-            context.SOURCE = sourceAccountList[0]
-            context.ACCOUNT = sourceAccountList[1]
-            context.add_account(context.SOURCE, context.ACCOUNT)
-        else:
-            update_strategy_state(lf.enums.StrategyState.Error, "账户解析异常.", context)
+        context.config = Config(args_dict)
+        context.trigger_info = ""
+        if context.config.startTime > 0:
+            date_time_for_nano = datetime.fromtimestamp(
+                context.config.startTime / (10**9)
+            )
+            time_str = date_time_for_nano.strftime("%Y-%m-%d %H:%M:%S.%f")
+            context.trigger_info = "时间满足" + time_str
+        if (not context.config.priceCondition) and context.config.startTime == 0:
+            update_strategy_state(
+                lf.enums.StrategyState.Error,
+                "触发时间和触发价格没设置.",
+                context,
+            )
+            context.log.info("触发时间和触发价格都没设置")
             context.req_deregister()
+            return
+        if context.config.source:
+            context.add_account(context.config.source, context.config.account)
+            context.subscribe(
+                context.config.marketSource,
+                [context.config.ticker],
+                context.config.exchange,
+            )
 
-        context.log.info(f"SOURCE {context.SOURCE} ACCOUNT {context.ACCOUNT}")
+            update_strategy_state(
+                lf.enums.StrategyState.Normal,
+                "正常",
+                context,
+            )
+
+        ins_type = wc.utils.get_instrument_type(
+            context.config.exchange, context.config.ticker
+        )
+        context.log.info("(标的类型) {}".format(ins_type))
+        if context.MIN_VOL == 0:
+            context.MIN_VOL = type_to_minvol(ins_type)
+
+
+    def str_to_nanotime(tm):
+        if tm is None or tm == "" or tm == "Invalid Date":
+            return 0
+        if tm.isdigit():  # in milliseconds
+            return int(tm) * 10**6
+        else:
+            year_month_day = time.strftime("%Y-%m-%d", time.localtime())
+            ymdhms = year_month_day + " " + tm.split(" ")[1]
+            timeArray = time.strptime(ymdhms, "%Y-%m-%d %H:%M:%S")
+            nano = int(time.mktime(timeArray) * 10**9)
+            return nano
+
+
+    def type_to_minvol(argument):
+        switcher = {
+            InstrumentType.Stock: int(100),
+            InstrumentType.Future: int(1),
+            InstrumentType.Bond: int(1),
+            InstrumentType.StockOption: int(1),
+            InstrumentType.Fund: int(1),
+            InstrumentType.TechStock: int(200),
+            InstrumentType.Index: int(1),
+        }
+        return switcher.get(argument, int(1))
+
+
+    def place_order(context):
+        if not context.order_placed:
+            if context.price < 0:
+                update_strategy_state(
+                    lf.enums.StrategyState.Warn,
+                    "没有收到行情",
+                    context,
+                )
+                context.log.error("没有收到行情, 无法下单, 请检查行情连接")
+                context.req_deregister()
+                return
+
+            rest_volume = context.config.volume
+            if context.config.maxLot == 0 or context.config.maxLot >= context.config.volume:
+                order_volume = rest_volume
+            else:
+                order_volume = context.config.maxLot
+            order_volume = int(
+                math.ceil(float(order_volume) / context.MIN_VOL) * context.MIN_VOL
+            )
+            i_order = 0
+            vol_list = dict()
+            now_nano = time.time_ns()
+            while rest_volume > 0:
+                i_order += 1
+                volume = (
+                    order_volume
+                    if order_volume <= rest_volume
+                    else int(
+                        math.ceil(float(rest_volume) / context.MIN_VOL) * context.MIN_VOL
+                    )
+                )
+                order_id = context.insert_order(
+                    context.config.ticker,
+                    context.config.exchange,
+                    context.config.source,
+                    context.config.account,
+                    context.price,
+                    volume,
+                    context.config.priceType,
+                    context.config.side,
+                    context.config.offset,
+                )
+                rest_volume -= order_volume
+                vol_list[order_id] = volume
+            context.order_placed = True
+            date_time_for_nano = datetime.fromtimestamp(now_nano / (10**9))
+            time_str = date_time_for_nano.strftime("%Y-%m-%d %H:%M:%S.%f")
+            context.log.info(
+                "-------------------- {} 开始下单 时间 {} --------------------".format(
+                    context.trigger_info, time_str
+                )
+            )
+            for key, val in vol_list.items():
+                context.log.info("订单号 {}, 下单数量 {} 下单价格 {}".format(key, val, context.price))
+
+            update_strategy_state(
+                lf.enums.StrategyState.Normal,
+                "下单完成, 退出任务",
+                context,
+            )
+            context.log.info("下单完成, 退出任务")
+            context.req_deregister()
 
 
     def post_start(context):
-        set_instruments_map(context)
-        if not load_excel(context.tasks_excel_path, context):
-            return
+        start = context.config.startTime - 60000000
 
-        update_strategy_state(
-            lf.enums.StrategyState.Normal,
-            "所有任务开始.",
-            context,
-        )
-        start_timer(context)
+        if context.config.startTime > 0:
+            context.add_timer(context.config.startTime, lambda ctx, event: place_order(ctx))
 
 
-    def make_order(context, task):
-        now_nano = time.time_ns()
-        context.insert_order(
-            task.get("instrument_id"),
-            task.get("exchange_id"),
-            context.SOURCE,
-            context.ACCOUNT,
-            task.get("limit_price"),
-            task.get("volume"),
-            task.get("price_type"),
-            task.get("side"),
-            task.get("offset"),
-            task.get("hedge_flag", HedgeFlag.Speculation),
-            task.get("is_swap", False),
-        )
-        date_time_for_nano = datetime.datetime.fromtimestamp(now_nano / (10**9))
-        time_str = date_time_for_nano.strftime("%Y-%m-%d %H:%M:%S.%f")
-        count = context.tasks_count - context.counts_to_fill + 1
-        context.log.info(
-            "-------------------- [第{}单] 时间 {} --------------------".format(count, time_str)
-        )
-        context.log.info(
-            "标的 {} 交易所 {} 账户 {} 价格 {} 数量 {} 方向 {} 开平 {} 投机套保标识 {} 互换 {}".format(
-                task["instrument_id"],
-                task["exchange_id"],
-                context.ACCOUNT,
-                task["limit_price"],
-                task["volume"],
-                task["side"],
-                task["offset"],
-                task.get("hedge_flag", HedgeFlag.Speculation),
-                task.get("is_swap", False),
-            )
-        )
-        return True
+    def on_quote(context, quote, source_location, dest):
+        if context.config.orderPrice == "0":
+            context.price = quote.last_price
+        elif context.config.orderPrice == "1":
+            if context.config.side == Side.Buy:
+                context.price = quote.ask_price[0]
+            else:
+                context.price = quote.bid_price[0]
+        elif context.config.orderPrice == "2":
+            if context.config.side == Side.Buy:
+                context.price = quote.bid_price[0]
+            else:
+                context.price = quote.ask_price[0]
+
+        if context.config.priceCondition:
+            for i, item in enumerate(context.config.priceCondition):
+                is_price_triggerred = True
+                if item["currentPrice"] == "1":
+                    quote_price = quote.bid_price[0]
+                elif item["currentPrice"] == "-1":
+                    quote_price = quote.ask_price[0]
+                else:
+                    quote_price = quote.last_price
+                if item["compare"] == "1":
+                    is_price_triggerred = quote_price >= float(item["triggerPrice"])
+                    if is_price_triggerred:
+                        context.trigger_info = "价格大于等于" + str(item["triggerPrice"])
+                elif item["compare"] == "2":
+                    is_price_triggerred = quote_price > float(item["triggerPrice"])
+                    if is_price_triggerred:
+                        context.trigger_info = "价格大于" + str(item["triggerPrice"])
+                elif item["compare"] == "3":
+                    is_price_triggerred = quote_price <= float(item["triggerPrice"])
+                    if is_price_triggerred:
+                        context.trigger_info = "价格小于等于" + str(item["triggerPrice"])
+                elif item["compare"] == "4":
+                    is_price_triggerred = quote_price < float(item["triggerPrice"])
+                    if is_price_triggerred:
+                        context.trigger_info = "价格小于" + str(item["triggerPrice"])
+                else:
+                    return
+                if not is_price_triggerred:
+                    return
+            place_order(context)
+
+
+配置文件package.json
+
+.. code-block:: json
+    :linenos:
+
+
+    {
+        "name": "@kungfu-trader/kfx-task-condition",
+        "author": {
+            "name": "kungfu-trader",
+            "email": "info@kungfu.link"
+        },
+        "kungfuBuild": {
+            "python": {
+                "dependencies": {}
+            }
+        },
+        "kungfuConfig": {
+            "key": "ConditionOrder",
+            "name": "条件单",
+            "ui_config": {
+                "position": "make_order"
+            },
+            "language": {
+                "zh-CN": {
+                    "accountId": "账户",
+                    "marketSource": "行情",
+                    "ticker": "标的",
+                    "side": "买卖",
+                    "offset": "开平",
+                    "priceType": "下单类型",
+                    "priceCondition": "价格条件",
+                    "currentPrice": "当前价格",
+                    "currentPrice_0": "买一价",
+                    "currentPrice_1": "卖一价",
+                    "currentPrice_2": "最新价",
+                    "compare": "比较符",
+                    "triggerPrice": "触发价格",
+                    "orderPrice": "下单价格",
+                    "orderPrice_0": "最新价",
+                    "orderPrice_1": "对手价一档",
+                    "orderPrice_2": "同方向一档",
+                    "volume": "数量",
+                    "maxLot": "单次最大手数",
+                    "maxLotTip": "柜台允许的单次最大手数, 以此为基础进行拆单, 不填则表示柜台无限制, 股票请填100的整数倍, 否则自动向下取整, 小于100则会强制设成100",
+                    "startTime": "触发时间"
+                },
+                "en-US": {
+                    "accountId": "Account Id",
+                    "marketSource": "Market Source",
+                    "ticker": "Ticker",
+                    "side": "Side",
+                    "offset": "Offset",
+                    "priceType": "Price Type",
+                    "priceCondition": "Price Condition",
+                    "currentPrice": "Current Price",
+                    "currentPrice_0": "Buy First Price",
+                    "currentPrice_1": "Sell First Price",
+                    "currentPrice_2": "Latest Price",
+                    "compare": "Compare",
+                    "triggerPrice": "Trigger Price",
+                    "orderPrice": "Order Price",
+                    "orderPrice_0": "Latest Price",
+                    "orderPrice_1": "Opponent First Level Price",
+                    "orderPrice_2": "Same Side First Level Price",
+                    "volume": "Volume",
+                    "maxLot": "Max Lot",
+                    "maxLotTip": "The single max hands that counter allow, this is the basis for the dismantling of the order. If you don't fill in the form, it means the counter is unlimited. Please fill in an integer multiple of 100, otherwise it will be rounded down automatically. If it is less than 100, it will be set to 100.",
+                    "startTime": "Trigger Time"
+                }
+            },
+            "config": {
+                "strategy": {
+                    "type": "trade",
+                    "settings": [
+                        {
+                            "key": "accountId",
+                            "name": "ConditionOrder.accountId",
+                            "type": "td",
+                            "required": true,
+                            "showArg": true
+                        },
+                        {
+                            "key": "marketSource",
+                            "name": "ConditionOrder.marketSource",
+                            "type": "md",
+                            "required": true,
+                            "showArg": true
+                        },
+                        {
+                            "key": "ticker",
+                            "name": "ConditionOrder.ticker",
+                            "type": "instrument",
+                            "required": true,
+                            "showArg": true
+                        },
+                        {
+                            "key": "side",
+                            "name": "ConditionOrder.side",
+                            "type": "side",
+                            "default": 0,
+                            "required": true,
+                            "showArg": true
+                        },
+                        {
+                            "key": "offset",
+                            "name": "ConditionOrder.offset",
+                            "type": "offset",
+                            "default": 0,
+                            "required": true,
+                            "showArg": true
+                        },
+                        {
+                            "key": "priceType",
+                            "name": "ConditionOrder.priceType",
+                            "type": "priceType",
+                            "default": "1",
+                            "required": false
+                        },
+                        {
+                            "key": "priceCondition",
+                            "name": "ConditionOrder.priceCondition",
+                            "type": "table",
+                            "columns": [
+                                {
+                                    "key": "currentPrice",
+                                    "name": "ConditionOrder.currentPrice",
+                                    "type": "select",
+                                    "options": [
+                                        {
+                                            "label": "ConditionOrder.currentPrice_0",
+                                            "value": "1"
+                                        },
+                                        {
+                                            "label": "ConditionOrder.currentPrice_1",
+                                            "value": "-1"
+                                        },
+                                        {
+                                            "label": "ConditionOrder.currentPrice_2",
+                                            "value": "0"
+                                        }
+                                    ],
+                                    "default": "0",
+                                    "required": true
+                                },
+                                {
+                                    "key": "compare",
+                                    "name": "ConditionOrder.compare",
+                                    "type": "select",
+                                    "options": [
+                                        {
+                                            "label": ">=",
+                                            "value": "1"
+                                        },
+                                        {
+                                            "label": ">",
+                                            "value": "2"
+                                        },
+                                        {
+                                            "label": "<=",
+                                            "value": "3"
+                                        },
+                                        {
+                                            "label": "<",
+                                            "value": "4"
+                                        }
+                                    ],
+                                    "default": "1",
+                                    "required": true
+                                },
+                                {
+                                    "key": "triggerPrice",
+                                    "name": "ConditionOrder.triggerPrice",
+                                    "type": "float",
+                                    "required": true
+                                }
+                            ],
+                            "required": false
+                        },
+                        {
+                            "key": "orderPrice",
+                            "name": "ConditionOrder.orderPrice",
+                            "type": "select",
+                            "options": [
+                                {
+                                    "label": "ConditionOrder.orderPrice_0",
+                                    "value": "0"
+                                },
+                                {
+                                    "label": "ConditionOrder.orderPrice_1",
+                                    "value": "1"
+                                },
+                                {
+                                    "label": "ConditionOrder.orderPrice_2",
+                                    "value": "2"
+                                }
+                            ],
+                            "required": true
+                        },
+                        {
+                            "key": "volume",
+                            "name": "ConditionOrder.volume",
+                            "type": "int",
+                            "min": 0,
+                            "required": true
+                        },
+                        {
+                            "key": "maxLot",
+                            "name": "ConditionOrder.maxLot",
+                            "type": "int",
+                            "min": 0,
+                            "tip": "ConditionOrder.maxLotTip",
+                            "required": false,
+                            "default": 0
+                        },
+                        {
+                            "key": "startTime",
+                            "name": "ConditionOrder.startTime",
+                            "type": "timePicker",
+                            "required": false
+                        }
+                    ]
+                }
+            }
+        }
+    }
 
 
 
-将dist目录下的Excel拷贝到以下目录, 
+说明文档README.md
+
+.. code-block:: markdown
+    :linenos:
+    
+    # 条件单 ConditionOrder
+
+    - 条件单可以接受两个类型的条件为约束，一个是价格条件，一个是时间条件
+    - 当仅有价格条件时 会在当前价格满足大于小于等于触发价格时下单
+    - 当仅有时间条件时 会在到达目标设定时间点时下单
+    - 当价格条件跟时间条件同时存在时，哪个条件先满足，以哪个条件下单
+    - 单次最大手数：若设置下单数量1000，而单比最大下单量为100，则会在下单时，拆为10份，每次100，一同下出。
+
+
+
+将dist目录下的ConditionOrder拷贝到以下目录, 
 
 
 ::
 
-    Windows: {kungfu安装目录}/resources/resources/app/kungfu-extensions/Excel
+    Windows: {kungfu安装目录}/resources/resources/app/kungfu-extensions/ConditionOrder
 
-    Linux: {kungfu安装目录}/resources/resources/app/kungfu-extensions/Excel
+    Linux: {kungfu安装目录}/resources/resources/app/kungfu-extensions/ConditionOrder
 
-    MacOS: {kungfu安装目录}/Contents/Resources//app/kungfu-extensions/Excel
+    MacOS: {kungfu安装目录}/Contents/Resources//app/kungfu-extensions/ConditionOrder
 
 
 重启Kungfu前端界面, 就可以在 **策略进程->添加->根据具体交易任务的配置设置**, 交易任务添加后表现行为与策略相似    
