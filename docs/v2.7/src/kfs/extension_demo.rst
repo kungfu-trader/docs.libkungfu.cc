@@ -821,56 +821,56 @@ package.json::
 
 
 
-----------------------
+.. ----------------------
 
 
-Broker对接范例
-^^^^^^^^^^^^^^^^^^^^^^
+.. Broker对接范例
+.. ^^^^^^^^^^^^^^^^^^^^^^
 
-源码目录结构::
+.. 源码目录结构::
 
-    kfx-broker-xtp-demo/
-    ├── src/
-    │   └── cpp
-    |       └── ....    # cpp柜台对接相关代码
-    └── package.json    # 编译配置信息
-
-
-编译后文件目录结构::
-
-    kfx-broker-xtp-demo/
-    ├── src/
-    │   └── cpp
-    |       └── ....                              # cpp策略代码
-    ├── package.json         
-    ├── __kungfulibs__
-    |   └── xtp
-    |       └── v2.2.37.4                                   # 使用的柜台API库
-    |           ├── doc                                     # 柜台API的文档
-    |           ├── include                                 # 柜台API的头文件
-    |           └── lib                                     # 依赖库文件
-    ├── dist/                                               # 编译打包出来的二进制文件
-    |   └── xtp
-    |       ├── KungfuStrategy101Cpp.cp39-win_amd64.pyd     # 二进制文件
-    |       └── ....                                        # 相关的依赖库文件
-    └── build                                               # build 编译生成中间文件
+..     kfx-broker-xtp-demo/
+..     ├── src/
+..     │   └── cpp
+..     |       └── ....    # cpp柜台对接相关代码
+..     └── package.json    # 编译配置信息
 
 
-相关代码文件在  `kfs-extension-demo`_
+.. 编译后文件目录结构::
 
-.. _kfs-extension-demo: https://github.com/kungfu-trader/kungfu
+..     kfx-broker-xtp-demo/
+..     ├── src/
+..     │   └── cpp
+..     |       └── ....                              # cpp策略代码
+..     ├── package.json         
+..     ├── __kungfulibs__
+..     |   └── xtp
+..     |       └── v2.2.37.4                                   # 使用的柜台API库
+..     |           ├── doc                                     # 柜台API的文档
+..     |           ├── include                                 # 柜台API的头文件
+..     |           └── lib                                     # 依赖库文件
+..     ├── dist/                                               # 编译打包出来的二进制文件
+..     |   └── xtp
+..     |       ├── KungfuStrategy101Cpp.cp39-win_amd64.pyd     # 二进制文件
+..     |       └── ....                                        # 相关的依赖库文件
+..     └── build                                               # build 编译生成中间文件
 
 
-将dist目录下的xtp目录拷贝到以下目录, 
+.. 相关代码文件在  `kfs-extension-demo`_
 
-::
+.. .. _kfs-extension-demo: https://github.com/kungfu-trader/kungfu
 
-    Windows: {kungfu安装目录}/resources/resources/app/kungfu-extensions/xtp
 
-    Linux: {kungfu安装目录}/resources/resources/app/kungfu-extensions/xtp
+.. 将dist目录下的xtp目录拷贝到以下目录, 
 
-    MacOS: {kungfu安装目录}/Contents/Resources//app/kungfu-extensions/xtp
+.. ::
 
-重启Kungfu前端界面, 
-在 **交易账户->添加->选择XTP**, 添加对应配置信息就可以添加xtp柜台交易账户
-在 **行情源->添加->选择XTP**, 添加对应配置信息就可以添加xtp行情源
+..     Windows: {kungfu安装目录}/resources/resources/app/kungfu-extensions/xtp
+
+..     Linux: {kungfu安装目录}/resources/resources/app/kungfu-extensions/xtp
+
+..     MacOS: {kungfu安装目录}/Contents/Resources//app/kungfu-extensions/xtp
+
+.. 重启Kungfu前端界面, 
+.. 在 **交易账户->添加->选择XTP**, 添加对应配置信息就可以添加xtp柜台交易账户
+.. 在 **行情源->添加->选择XTP**, 添加对应配置信息就可以添加xtp行情源
