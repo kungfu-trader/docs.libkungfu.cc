@@ -20,7 +20,7 @@ root_dir = path.dirname(__file__)
 
 # -- Project information -----------------------------------------------------
 
-project = "功夫量化"
+project = "功夫核心库"
 author = "功夫量化"
 copyright = f"2017 - {date.today().year}, {author}, Apache License 2.0"
 
@@ -37,6 +37,7 @@ extensions = [
     "rinoh.frontend.sphinx",
     "rst2pdf.pdfbuilder",
     "sphinx_rtd_theme",
+    "sphinx_rtd_dark_mode",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -54,6 +55,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # a list of builtin themes.
 #
 html_theme = "sphinx_rtd_theme"
+default_dark_mode = True
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -118,7 +120,7 @@ today_fmt = "%B %d, %Y"
 
 # settings for rst2pdf
 pdf_documents = [
-    ("index", pdf_doc_name, "功夫量化", f"v{current_version}"),
+    ("index", pdf_doc_name, "功夫核心库", f"v{current_version}"),
 ]
 
 latex_pdf_name = f"kungfu-v{current_version}.tex"
@@ -129,10 +131,10 @@ pdf_name = f"kungfu-v{current_version}"
 latex_elements = {"extraclassoptions": "openany,oneside"}
 
 latex_documents = [
-    (master_doc, "index.tex", "功夫量化", f"v{current_version}", "manual"),
+    (master_doc, "index.tex", "功夫核心库", f"v{current_version}", "manual"),
 ]
 
-man_pages = [(master_doc, pdf_name, "功夫量化", [author], 1)]
+man_pages = [(master_doc, pdf_name, "功夫核心库", [author], 1)]
 
 
 # latex_show_urls = 'footnote'
