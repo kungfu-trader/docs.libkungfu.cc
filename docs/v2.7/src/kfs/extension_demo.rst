@@ -63,7 +63,7 @@ package.json::
     yjj = kungfu.__binding__.yijinjing
 
     source = "sim"  # 目标交易账户的柜台名称
-    account = "fill"  # 目标交易账户的账户号, 需添加 sim 柜台的账户号为 simTest 的账户
+    account = "fill"  # 目标交易账户的账户号, 需添加 sim 柜台的账户号为 fill 的账户
     md_source = "sim"  # 目标行情源的柜台名称, 需添加 sim 行情源
 
 
@@ -280,18 +280,18 @@ CPP策略可执行程序范例
 package.json::
 
     {
-    "name": "@kungfu-trader/examples-strategy-cpp",
-    "author": "kungfu-trader",
-    "description": "KungFu Strategy 101 - C++ Demo",
-    "license": "Apache-2.0",
-    "kungfuConfig": {
-        "key": "KungfuStrategy101CppExe"
-    },
-    "kungfuBuild": {
-        "cpp": {
-            "target": "exe"
+        "name": "@kungfu-trader/examples-strategy-cpp",
+        "author": "kungfu-trader",
+        "description": "KungFu Strategy 101 - C++ Demo",
+        "license": "Apache-2.0",
+        "kungfuConfig": {
+            "key": "KungfuStrategy101CppExe"
+        },
+        "kungfuBuild": {
+            "cpp": {
+                "target": "exe"
+            }
         }
-    }
     }
 
 
@@ -374,6 +374,11 @@ package.json::
 
 
 直接运行 KungfuStrategy101CppExe.exe 程序就可以运行以上策略
+
+.. tip::
+
+    1. 需要将 {Kungfu安装目录}/resource/kfc/ 目录下的Kungfu.dll放在KungfuStrategy101CppExe.exe同一个目录下, 或者配置系统变量使得程序运行时可以找到动态库Kungfu.dll
+    2. 尽量使用命令行运行, 鼠标双击运行后在退出时会自动关闭命令行界面, 必须要找到Kungfu运行home目录下找到对应log文件才能查看运行日志
 
 
 
@@ -919,7 +924,7 @@ Python交易任务范例
 
     Linux: {kungfu安装目录}/resources/resources/app/kungfu-extensions/ConditionOrder
 
-    MacOS: {kungfu安装目录}/Contents/Resources//app/kungfu-extensions/ConditionOrder
+    MacOS: {kungfu安装目录}/Contents/Resources/app/kungfu-extensions/ConditionOrder
 
 
 重启Kungfu前端界面, 就可以在 **策略进程->添加->根据具体交易任务的配置设置**, 交易任务添加后表现行为与策略相似    
@@ -974,7 +979,7 @@ Python交易任务范例
 
 ..     Linux: {kungfu安装目录}/resources/resources/app/kungfu-extensions/xtp
 
-..     MacOS: {kungfu安装目录}/Contents/Resources//app/kungfu-extensions/xtp
+..     MacOS: {kungfu安装目录}/Contents/Resources/app/kungfu-extensions/xtp
 
 .. 重启Kungfu前端界面, 
 .. 在 **交易账户->添加->选择XTP**, 添加对应配置信息就可以添加xtp柜台交易账户

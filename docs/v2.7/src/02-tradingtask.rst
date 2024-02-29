@@ -573,7 +573,7 @@
 .. code-block:: shell
 
     # Linux
-    cp -r ./dist/ConditionOrder/  /opt/Kungfu//resources/app/kungfu-extensions/
+    cp -r ./dist/ConditionOrder/  /opt/Kungfu/resources/app/kungfu-extensions/
     # Windows
     Copy-Item -Path ./dist/ConditionOrder/ -Destination D:/Kungfu/resources/app/kungfu-extensions/ConditionOrder/ -Recurse -Force   
 
