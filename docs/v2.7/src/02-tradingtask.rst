@@ -16,10 +16,10 @@
 
 源码目录结构::
 
-    kfx-task-condition-demo/
+    kfx-task-condition-demo/                    # 交易任务文件名(英文名称,随意)
     ├── src/
     │   └── python
-    |       └── ConditionOrder
+    |       └── ConditionOrder                  # 交易任务名称(英文名称,随意)
     |           └── __init__.py                 # python交易任务策略代码
     ├── README.md                               # 交易任务说明
     └── package.json                            # 编译配置信息
@@ -508,12 +508,12 @@
 
 
 
-说明文档README.md
+说明文档 README.md
 
 .. code-block:: markdown
     :linenos:
     
-    # 条件单 ConditionOrder
+    条件单逻辑说明 : 
 
     - 条件单可以接受两个类型的条件为约束，一个是价格条件，一个是时间条件
     - 当仅有价格条件时 会在当前价格满足大于小于等于触发价格时下单
@@ -525,24 +525,34 @@
 ------------------------
 
 
-2. 在编译生成二进制文件
+2. 编译生成二进制文件
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-在命令行中进入到目录kfx-task-condition-demo/,
-执行kfs编译命令 kfs extension build.
+编译流程: 
 
-假设功夫软件安装在Windows的D盘的根目录, 即目录为 D:/Kungfu;
+(1)在命令行中进入交易任务文件根目录下
 
-假设功夫软件安装在Linux的/opt/Kungfu
+::
+
+    $ cd kfx-task-condition-demo/
+    # 举例交易任务文件名为 kfx-task-condition-demo
+
+(2)执行kfs编译命令
+
+::
+
+    $ kfs extension build
 
 
-.. code-block:: bash    
-    
-    # Linux
-    /opt/Kungfu/resources/kfc/kfs extension build
-    # Windows
-    D:/Kungfu/resources/kfc/kfs.exe extension build
+.. attention:: 
 
+   - 执行编译的kfs命令路径为功夫的安装目录下 /Kungfu/resources/kfc/kfs
+
+    - 举例: Windows系统下，功夫安装路径为D盘的根目录,即功夫安装目录为 D:/Kungfu
+     - 编译命令为 : D:/Kungfu/resources/kfc/kfs.exe extension build
+
+    - 举例: linux系统下，功夫安装路径为/opt/Kungfu
+     - 编译命令为 : /opt/Kungfu/resources/kfc/kfs extension build
 
 
 编译后文件目录结构::
@@ -555,9 +565,9 @@
     ├── README.md                               
     ├── package.json         
     ├── __pypackages__/                                         # Python模块库, 自动生成
-    ├── dist/                                                   # 编译打包出来的二进制文件
+    ├── dist/                                                   # 编译打包出来的二进制文件所在文件夹
     |   └── ConditionOrder
-    |       └── ConditionOrder.cp39-win_amd64.pyd                        # 二进制文件
+    |       └── ConditionOrder.cp39-win_amd64.pyd               # 二进制文件
     ├── pdm.lock                                                # build后下载依赖库自动生成的文件
     └── pyproject.toml                                          # build后下载依赖库自动生成的文件
 
@@ -568,14 +578,25 @@
 3. 将文件拷贝到插件目录
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-在命令行中进入到目录kfx-task-condition-demo/, 执行以下命令将二进制文件所在的目录拷贝到Kungfu插件目录
 
-.. code-block:: shell
+流程: 
 
-    # Linux
-    cp -r ./dist/ConditionOrder/  /opt/Kungfu/resources/app/kungfu-extensions/
-    # Windows
-    Copy-Item -Path ./dist/ConditionOrder/ -Destination D:/Kungfu/resources/app/kungfu-extensions/ConditionOrder/ -Recurse -Force   
+(1)在命令行中进入交易任务文件根目录下
+
+::
+
+    $ cd kfx-task-condition-demo/
+    # 举例交易任务文件名为 kfx-task-condition-demo
+
+(2)复制二进制文件所在的目录拷贝到Kungfu插件目录
+
+.. attention:: 
+
+   - 插件目录路径为功夫的安装目录下 /Kungfu/resources/app/kungfu-extensions/
+
+   - Windows系统 : Copy-Item -Path ./dist/ConditionOrder/ -Destination D:/Kungfu/resources/app/kungfu-extensions/ConditionOrder/ -Recurse -Force   
+
+   - Linux系统 : cp -r ./dist/ConditionOrder/  /opt/Kungfu/resources/app/kungfu-extensions/
 
 
 ---------------------------
@@ -583,7 +604,7 @@
 4. 添加交易任务
 ^^^^^^^^^^^^^^^^^^^^^
 
-重启Kungfu图形客户端, 从主面板中的"交易任务"模块, 点击右上角的"添加"按钮, 在弹出的"选择交易任务"面板中选择"条件单"
+重启Kungfu图形客户端，选择主面板中的"交易任务"面板，点击右上角的"添加"按钮，在弹出的"选择交易任务"面板中选择"条件单"
 
 .. image:: _images/条件单.png
 
@@ -594,18 +615,16 @@
 交易任务和策略的区别
 ---------------------
 
-1. 前端参数
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. list-table::
+   :width: 600px
 
-交易任务可以接收前端配置的参数, 前端配置的参数会以一个json字符串格式传入到 context.arguments.
-
-策略不可以.
-
-
-2. 交易进度统计
-^^^^^^^^^^^^^^^^^^^^
-
-交易任务可以在成交和委托回调中, 统计成交进度, 或是属于交易任务特有的指标, 前端界面可以显示这些信息, 同时还可以进行异常报警提示.
-
-策略不可以
+   * - 功能描述
+     - 交易任务
+     - 策略
+   * - 前端参数
+     - 可传参(交易任务可以接收前端配置的参数，前端配置的参数会以一个json字符串格式传入到 context.arguments。)
+     - 不可传参
+   * - 交易进度信息统计展示
+     - 展示进度信息(交易任务可以在成交和委托回调中，统计成交进度，或是属于交易任务特有的指标，前端界面可以显示这些信息，同时还可以进行异常报警提示。)
+     - 不展示
