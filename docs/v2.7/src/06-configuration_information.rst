@@ -423,14 +423,14 @@ errMsg
 
 
 default
-''''''''
+''''''''''
 ::
 
     default: 默认值，类型需和 type 一致，目前只支持对一些基础类型设置（int/float/str/bool/percent/select/checkbox/multiSelect/radio）
 
 
 required
-''''''''
+''''''''''
 ::
 
     required: true/false, 该项是否必填

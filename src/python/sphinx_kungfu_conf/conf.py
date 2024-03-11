@@ -37,7 +37,7 @@ extensions = [
     "rinoh.frontend.sphinx",
     "rst2pdf.pdfbuilder",
     "sphinx_rtd_theme",
-    "sphinx_rtd_dark_mode"
+    "sphinx_rtd_dark_mode",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -70,7 +70,7 @@ html_favicon = path.join(root_dir, "_static", "images", "icon.png")
 html_theme_options = {
     "logo_only": True,
     "display_version": True,
-    'navigation_depth': 6       
+    "navigation_depth": 6,
 }
 
 # The master toctree document.
@@ -107,7 +107,6 @@ html_context["version"] = current_version
 html_context["versions"] = version_info["versions"]
 html_context["downloads"] = download_info["versions"]
 html_context["has_prerelease"] = version_info["has_prerelease"]
-
 
 
 # POPULATE LINKS TO OTHER FORMATS/DOWNLOADS
