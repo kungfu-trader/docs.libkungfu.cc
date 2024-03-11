@@ -52,6 +52,95 @@ Setup 编译及运行环境
 
 开始编译前，请先确保安装以上工具，且正确设置 PATH 环境变量。
 
+Windows下环境配置
+^^^^^^^^^^^^^^^^^^
+
+1 . 需要安装 :
+>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+    visual studio community 2022 及以上版本 (安装 visual studio 会带有 cmake )
+    
+    Node.js 18.1及以上版本
+
+2 . visual studio community 2022 / node.js 下载地址
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+ **visual studio community 2022** 
+
+ ::
+
+    https://visualstudio.microsoft.com/zh-hans/thank-you-downloading-visual-studio/?sku=Community&channel=Release&version=VS2022&source=VSLandingPage&cid=2030&passive=false
+
+ 
+ **node.js** 
+ :: 
+
+    https://nodejs.org/en/download
+    
+3 . 使用visual studio自带的64位shell
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+ - 点击电脑左下角的开始菜单
+
+        .. image:: _images/开始菜单.png
+           :width: 400px
+           :height: 250px
+
+ - 向下查找 visual studio 2022
+
+        .. image:: _images/vs2022.png
+           :width: 700px
+           :height: 1500px
+
+ - 选择 x64 Native Tools Command Prompt VS 2022
+
+        .. image:: _images/x64native.png
+           :width: 800px
+           :height: 1500px
+
+
+.. 注意::
+
+ - 对于2.4版本 (Kungfu-1.0.x-win-x64-latest.exe)、2.5版本(Kungfu-1.1.x-win-x64-latest.exe)，安装visual studio community 2022后可以进行操作。
+
+
+ - 对于2.6版本(Kungfu-2.6.x-win-x64-latest.exe)、2.7版本(Kungfu-2.7.x-win-x64-latest.exe)，需要先更新 visual studio 版本，在进行操作 (更新操作如下)。
+
+  - 搜索visual studio installer
+
+         .. image:: _images/搜索vs.png
+            :width: 600px
+            :height: 400px
+
+  - 打开visual studio installer , 点击更新按钮
+
+         .. image:: _images/更新vs.png
+            :width: 600px
+            :height: 400px
+
+  - 更新完毕 
+
+         .. image:: _images/更新完成vs.png
+            :width: 600px
+            :height: 400px
+
+
+Linux下环境配置
+^^^^^^^^^^^^^^^^^^
+
+ **需保证gcc版本为11**
+
+
+.. tip:: 
+
+  可以使用我们的docker来编译
+  
+  docker run --name kf --ulimit memlock=-1 --privileged --net=host -td -v /path/to/package:/Project:rw docker.io/kungfutrader/kungfu-builder-centos:v1.2.3 /usr/sbin/init 
+   - kf : 指定的名字 (根据个⼈修改) 
+   - /path/to/package : docker外的地址 (根据个⼈修改) 
+   - /Project : docker内地址 (根据个⼈修改)
+
+
 Compile 编译
 ~~~~~~~~~~~~~~
 

@@ -3,11 +3,11 @@ Python策略范例
 
 源码目录结构::
 
-    strategy-python-101/
+    strategy-python-101/                        # 名字随意
     ├── src/
     │   └── python
-    |       └── KungfuStrategy101Python
-    |           └── __init__.py                 # python策略代码
+    |       └── KungfuStrategy101Python         # 必须与package.json中kungfuConfig的key相同
+    |           └── __init__.py                 # python策略代码,文件名不可更改
     └── package.json                            # 编译配置信息
 
 
@@ -22,7 +22,7 @@ Python策略范例
     ├── __pypackages__/                                         # Python模块库, 自动生成
     ├── dist/                                                   # 编译打包出来的二进制文件
     |   └── KungfuStrategy101Python
-    |       └── KungfuStrategy101Python.cp39-win_amd64.pyd      # 二进制文件
+    |       └── KungfuStrategy101Python.cp39-win_amd64.pyd      # 编译之后的二进制文件
     ├── pdm.lock                                                # build后下载依赖库自动生成的文件
     └── pyproject.toml                                          # build后下载依赖库自动生成的文件
 
@@ -43,10 +43,12 @@ package.json::
             }
         },
         "kungfuConfig": {
-            "key": "KungfuStrategy101Python"
+            "key": "KungfuStrategy101Python"               # key对应的是 策略文件中策略文件(.py文件)所在文件夹的名字 , 这个名字不能有 _ , - . 比如命名不可以是 : kungfu-demo , kungfu_demo
         }
     }
 
+
+__init__.py 策略范例 : 
 
 .. code-block:: python
     :linenos:
@@ -154,7 +156,7 @@ CPP策略范例
     ├── package.json         
     ├── dist/                                               # 编译打包出来的二进制文件
     |   └── KungfuStrategy101Cpp
-    |       └── KungfuStrategy101Cpp.cp39-win_amd64.pyd     # 二进制文件
+    |       └── KungfuStrategy101Cpp.cp39-win_amd64.pyd     # 编译之后的二进制文件
     └── build                                               # build 编译生成中间文件
 
 
@@ -166,9 +168,9 @@ package.json::
         "description": "KungFu Strategy 101 - C++ Demo",
         "license": "Apache-2.0",
         "kungfuConfig": {
-            "key": "KungfuStrategy101Cpp"
+            "key": "KungfuStrategy101Cpp"                   # 编译之后的二进制文件所在文件夹名
         },
-        "kungfuBuild": {
+        "kungfuBuild": {                                    # 打包模块相关
             "cpp": {
             "target": "bind/python"
             }
@@ -905,7 +907,7 @@ Python交易任务范例
 .. code-block:: markdown
     :linenos:
     
-    # 条件单 ConditionOrder
+    条件单逻辑说明 : 
 
     - 条件单可以接受两个类型的条件为约束，一个是价格条件，一个是时间条件
     - 当仅有价格条件时 会在当前价格满足大于小于等于触发价格时下单
@@ -927,7 +929,8 @@ Python交易任务范例
     MacOS: {kungfu安装目录}/Contents/Resources/app/kungfu-extensions/ConditionOrder
 
 
-重启Kungfu前端界面, 就可以在 **策略进程->添加->根据具体交易任务的配置设置**, 交易任务添加后表现行为与策略相似    
+重启Kungfu前端界面, 就可以在 **交易任务面板->添加->根据具体交易任务的配置设置**, 交易任务添加后表现行为与策略相似    
+
 
 
 

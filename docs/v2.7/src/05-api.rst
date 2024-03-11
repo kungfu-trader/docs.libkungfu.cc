@@ -2470,7 +2470,7 @@ Quote 行情信息
      - float
      - 最新价
    * - volume
-     - int
+     - float
      - 数量
    * - turnover
      - float
@@ -2505,6 +2505,15 @@ Quote 行情信息
    * - iopv
      - float
      - 基金实时参考净值
+   * - total_bid_volume
+     - float
+     - 总委托买入量
+   * - total_ask_volume
+     - float
+     - 总委托卖出量
+   * - total_trade_num
+     - float
+     - 总成交笔数   
    * - bid_price
      - list of float
      - 申买价
@@ -2546,7 +2555,7 @@ Entrust 逐笔委托
      - float
      - 委托价格
    * - volume
-     - int
+     - float
      - 委托量
    * - side
      - :ref:`Side <Side对象>`
@@ -2595,7 +2604,7 @@ Transaction 逐笔成交
      - float
      - 成交价
    * - volume
-     - int
+     - float
      - 成交量
    * - bid_no
      - long
@@ -2606,8 +2615,8 @@ Transaction 逐笔成交
    * - exec_type
      - :ref:`ExecType <ExecType对象>`
      - SZ: 成交标识
-   * - bs_flag
-     - :ref:`BsFlag <BsFlag对象>`
+   * - side
+     - :ref:`Side <Side对象>`
      - 买卖方向
    * - main_seq
      - long
@@ -2633,6 +2642,12 @@ Order 订单回报
    * - order_id
      - int
      - 订单ID
+   * - external_order_id
+     - str
+     - 柜台订单ID
+   * - parent_id
+     - int
+     - 母单号
    * - insert_time
      - int
      - 订单写入时间(功夫时间)
@@ -2645,12 +2660,9 @@ Order 订单回报
    * - exchange_id
      - str
      - 交易所ID
-   * - external_order_id
+   * - contract_id
      - str
-     - 柜台订单ID
-   * - parent_id
-     - int
-     - 母单号
+     - 两融合约唯一标识
    * - instrument_type
      - :ref:`InstrumentType <InstrumentType对象>`
      - 合约类型
@@ -2661,10 +2673,10 @@ Order 订单回报
      - float
      - 冻结价格（市价单冻结价格为0.0）
    * - volume
-     - int
+     - float
      - 数量
    * - volume_left
-     - int
+     - float
      - 剩余数量
    * - tax
      - float
@@ -2718,6 +2730,15 @@ Trade 订单成交
    * - trade_id
      - int
      - 成交ID
+   * - parent_order_id
+     - int
+     - 母单号
+   * - external_order_id
+     - str
+     - 柜台订单ID
+   * - external_trade_id
+     - str
+     - 柜台成交编号ID
    * - order_id
      - int
      - 订单ID
@@ -2727,18 +2748,12 @@ Trade 订单成交
    * - instrument_id
      - str
      - 合约ID
-   * - parent_order_id
-     - int
-     - 母单号
    * - exchange_id
      - str
      - 交易所ID
-   * - external_order_id
+   * - contract_id
      - str
-     - 柜台订单ID
-   * - external_trade_id
-     - str
-     - 柜台成交编号ID
+     - 两融合约唯一标识
    * - instrument_type
      - :ref:`InstrumentType <InstrumentType对象>`
      - 合约类型
@@ -2755,7 +2770,7 @@ Trade 订单成交
      - float
      - 成交价格
    * - volume
-     - int
+     - float
      - 成交量
    * - tax
      - float
@@ -2794,6 +2809,9 @@ HistoryOrder 历史订单
    * - external_order_id
      - str
      - 柜台订单ID
+   * - contract_id
+     - str
+     - 两融合约唯一标识
    * - is_last
      - bool
      - 是否为本次查询的最后一条记录
@@ -2810,10 +2828,10 @@ HistoryOrder 历史订单
      - float
      - 冻结价格（市价单冻结价格为0.0）
    * - volume
-     - int
+     - float
      - 数量
    * - volume_left
-     - int
+     - float
      - 剩余数量
    * - tax
      - float
@@ -2882,6 +2900,9 @@ HistoryTrade 历史成交
    * - external_order_id
      - str
      - 柜台订单ID
+   * - contract_id
+     - str
+     - 两融合约唯一标识
    * - external_trade_id
      - str
      - 柜台成交编号ID
@@ -2910,10 +2931,10 @@ HistoryTrade 历史成交
      - float
      - 成交价格
    * - volume
-     - int
+     - float
      - 成交量
    * - close_today_volume
-     - int
+     - float
      - 平今日仓量（期货）
    * - tax
      - float
@@ -2951,6 +2972,9 @@ OrderInput 订单输出
    * - exchange_id
      - str
      - 交易所ID
+   * - contract_id
+     - str
+     - 两融合约唯一标识
    * - instrument_type
      - :ref:`InstrumentType <InstrumentType对象>`
      - 合约类型
@@ -2961,7 +2985,7 @@ OrderInput 订单输出
      - float
      - 冻结价格
    * - volume
-     - int
+     - float
      - 数量
    * - is_swap
      - bool
@@ -3557,6 +3581,30 @@ Book.asset 投资组合资金信息
    * - collateral_ratio
      - float
      - 担保比例
+   * - total_debt
+     - float
+     - 总负债
+   * - net_assets
+     - float
+     - 净资产
+   * - long_total_debt
+     - float
+     - 融资总负债（融资欠款+融资利息+融资费用）
+   * - short_total_debt
+     - float
+     - 融券总负债（融券市值+融券利息+融券费用）
+   * - gage_buy_fund_available
+     - float
+     - 担保品买入可用资金
+   * - credit_buy_fund_available
+     - float
+     - 融资融券可用资金
+   * - buyredeliver_fund_available
+     - float
+     - 买券还券可用资金
+   * - directrepay_fund_available
+     - float
+     - 现金还款可用资金
 
 .. _Commission对象:
 
@@ -3719,22 +3767,22 @@ Position 持仓信息
      - :ref:`Direction <Direction对象>`
      - 持仓方向
    * - volume
-     - int
+     - float
      - 数量
    * - yesterday_volume
-     - int
+     - float
      - 昨仓数量
    * - frozen_total
-     - int
+     - float
      - 冻结数量
    * - frozen_yesterday
-     - int
+     - float
      - 冻结昨仓
    * - static_yesterday
-     - int
+     - float
      - 固定昨仓数量
    * - open_volume
-     - int
+     - float
      - 今开数量
    * - last_price
      - float
@@ -3804,22 +3852,22 @@ Position 持仓信息
      - :ref:`Direction <Direction对象>`
      - 持仓方向
    * - volume
-     - int
+     - float
      - 总持仓量
    * - yesterday_volume
-     - int
+     - float
      - 昨仓数量
    * - frozen_total
-     - int
+     - float
      - 冻结数量
    * - frozen_yesterday
-     - int
+     - float
      - 冻结昨仓
    * - static_yesterday
-     - int
+     - float
      - 固定昨仓数量
    * - open_volume
-     - int
+     - float
      - 今开数量
    * - last_price
      - float
