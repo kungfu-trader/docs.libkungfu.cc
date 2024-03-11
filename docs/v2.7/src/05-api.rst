@@ -2515,7 +2515,7 @@ Quote 行情信息
      - float
      - 总成交笔数   
    * - bid_price
-     - int
+     - list of float
      - 申买价
    * - ask_price
      - list of float
