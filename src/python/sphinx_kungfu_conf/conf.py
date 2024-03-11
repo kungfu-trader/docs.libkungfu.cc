@@ -33,6 +33,7 @@ language = "zh_CN"
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
+# sphinx_rtd_dark_mode 添加了暗模式支持
 extensions = [
     "rinoh.frontend.sphinx",
     "rst2pdf.pdfbuilder",
@@ -55,6 +56,8 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # a list of builtin themes.
 #
 html_theme = "sphinx_rtd_theme"
+
+# 默认模式设置为暗模式
 default_dark_mode = True
 
 # Add any paths that contain custom static files (such as style sheets) here,
