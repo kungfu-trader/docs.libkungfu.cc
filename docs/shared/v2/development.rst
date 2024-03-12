@@ -147,7 +147,7 @@ Compile 编译
 常规操作
 获取代码并编译::
 
-    $ git clone git@github.com:kungfu-trader/kungfu.git
+    $ git clone git@github.com:kungfu-origin/kungfu.git
     $ cd kungfu
     $ yarn install
     $ yarn build
