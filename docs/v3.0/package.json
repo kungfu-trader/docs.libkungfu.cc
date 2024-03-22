@@ -13,6 +13,6 @@
     "format": "prettier --write --parser typescript \"**/**.js\""
   },
   "dependencies": {
-    "@kungfu-trader/kungfu-core": "3.0.0"
+    "@kungfu-trader/kungfu-core": "3.0.0-alpha.6"
   }
 }
