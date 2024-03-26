@@ -211,6 +211,3 @@ kfc文件路径
     fs.get_public_feature_data("main-inflow-factor")
 
     # 获取 主力流入因子 在其时间段内的数据
-
-    import kungfu.yijinjing.time as kft
-    kft.to_datetime(quote.data_time) 
