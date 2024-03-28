@@ -80,7 +80,7 @@
 【命令行】获取因子结果
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. note:: 支持在jupyter notebook中获取精选/自研因子结果、运行因子任务
+.. note:: 支持在jupyter notebook中获取精选/自研因子结果
 
     - 建议在Anaconda环境中运行，Python为3.9版本
 
