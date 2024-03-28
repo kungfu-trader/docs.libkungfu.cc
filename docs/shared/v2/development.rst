@@ -76,8 +76,45 @@ Windows下环境配置
  :: 
 
     https://nodejs.org/en/download
-    
-3 . 使用visual studio自带的64位shell
+
+
+3 . visual studio需要下载的组件
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+    需要选择 Python开发、Node.js开发、使用C++的桌面开发、通用Windows平台开发、Visual Studio扩展开发。(具体安装信息见下图)
+
+ - Python开发
+
+        .. image:: _images/vspython开发.png
+           :width: 400px
+           :height: 250px
+
+ - Node.js开发
+
+        .. image:: _images/vs-node.png
+           :width: 600px
+           :height: 500px
+
+ - 使用C++的桌面开发
+
+        .. image:: _images/vs-c++桌面.png
+           :width: 500px
+           :height: 800px
+
+ - 通用Windows平台开发
+
+        .. image:: _images/vs-windows平台.png
+           :width: 400px
+           :height: 600px
+
+ - Visual Studio扩展开发
+
+        .. image:: _images/vs扩展开发.png
+           :width: 700px
+           :height: 500px
+
+
+4 . 使用visual studio自带的64位shell
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
  - 点击电脑左下角的开始菜单
