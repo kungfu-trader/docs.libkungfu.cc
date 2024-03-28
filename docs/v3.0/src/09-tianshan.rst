@@ -2,170 +2,108 @@
 ======================
 
 
-.. note:: 功夫高精回测的优势 
+因子研究
+-----------
 
-   - **全场景覆盖的自研撮合引擎** ：优秀的撮合与 tick 级数据使得回测结果能够与实盘结果无限接近，功夫提供自研回测撮合引擎对 集合竞价撮合、换日委托失效、分笔成交、涨跌停过滤等场景均有覆盖，更加精准地模拟策略表现，接近实盘表现。
-   - **高质量行情数据** ：使用经过深度清洗处理的高质量逐笔行情数据，用户无需再经历繁琐的数据预处理阶段。
-   - **高效存储与执行机制** ：搭载自研易筋经内存数据库，利用共享内存实现数据高速存取，避免频繁磁盘操作。系统仅需即时读取内存数据，可逼近 IO 极限，显著提升回测效率，缩短回测用时。
-   - **无缝对接实盘交易** ：回测使用与实盘一致的数据流。回测结束后，策略代码无需调整即可直接应用于实盘环境。免去代码转写的繁琐。
-   - **私有化部署与定制扩展能力** ：功夫回测支持本地私有化部署，保障策略安全。同时，撮合引擎、数据工具及回测报告等多个模块均支持自定义开发，满足个性化需求。如有合作意向或咨询需求，欢迎 `联系我们 <https://www.kungfu-trader.com/index.php/consult/>`_  。
+功夫因子研究的优势
+~~~~~~~~~~~~~~~~~~~
 
+.. note:: 功夫因子挖掘的优势 
 
-命令行回测
----------------
+   - **高精度数据免费提供** ：提供市面上最高精度Level 2快照十档/逐笔数据，助力挖掘因子。
 
-    可以使用kfc模块在命令行进行回测
+   - **轻松融入现有工作流** ：兼容已有固定工作流，支持功夫中运行回测任务，其他环境（如notebook）通过接口调用结果。无需全面替换现有工作流。
 
 
-kfc文件路径
-~~~~~~~~~~~~~
+精选因子是什么
+~~~~~~~~~~~~~~~~~~
 
+.. note:: 精选因子是什么？
+    
+    - 精选因子是功夫官方提供的因子示例，功夫每天将定时更新精选因子的数据，欢迎关注！
 
-::
+    - 通过“一键自研”可以下载精选因子源码，参考源码写出你自己的alpha因子！
 
-    Windows: {kungfu安装目录}/resources/kfc/kfc.exe
 
-    Linux: {kungfu安装目录}/resources/kfc/kfc
+【客户端】获取因子结果
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    MacOS: {kungfu安装目录}/Contents/Resources/kfc/kfc
+精选因子
+^^^^^^^^^^^^^^^^^^
 
+(1) 点击左侧边栏“因子” 进入因子界面
 
-.. tip:: 
-  
-  Windows与MacOS版本可通过图形化界面的菜单栏， **文件->打开功夫安装目录**， 可以直接打开 **{kungfu安装目录}/resources** 目录
+.. image:: _images/进入因子-30.png
 
+(2) 在“精选列表”中选择自己想查看的因子
 
-使用说明
-~~~~~~~~~~~~~
+.. image:: _images/选择精选因子-30.png
 
-登录
-^^^^^^^^
+(3) 选择日期，查看对应日期的结果
 
-    必须先完成登录才能进行后续操作
+.. image:: _images/选择精选日期-30.png
 
-::
 
-    kfc -s {stage} login -A {phone}
+自研因子
+^^^^^^^^^^^^^^^^^^
 
-    # stage: 回测环境， 默认为 "prod"
-    # phone: 登录手机号
+(1) 在“自研”面板点击“添加策略”添加因子策略，若已添加，请跳到下一步
 
-例如 : 
+.. image:: _images/运行因子1-30.png
 
-    以安装在Windows电脑为例，安装目录为下载(Downloads)目录下
+(2) 选中想运行的因子任务，点击“运行因子”
 
-::
+.. image:: _images/运行因子2-30.png
 
-    C:\Users\kf\Downloads\kungfu\resources\kfc\kfc.exe login -A 18686868886
+(3) 选择想运行的因子日期、数据源，点击确定
 
-    # 然后填写验证码，回车完成登录
+.. image:: _images/运行因子3-30.png
 
-.. image:: _images/kfc-login.png
+(4) 任务提交后，将实时更新任务状态、日志。
 
+.. image:: _images/运行因子4-30.png
 
-提交回测
-^^^^^^^^^^
+(5) 状态变为“已完成”，点击“结果”面板
 
-::
+.. image:: _images/运行因子5-30.png
 
-    kfc -s {stage} backtest submit -f {strategy} -b {begin_time} -e {end_time} -l {level}
+(6) 点击“查看结果”，查看对应日期的因子结果
 
-    # stage: 回测环境， "prod"
-    # strategy: 策略所在路径，建议绝对路径
-    # begin_time: 开始时间， 如: 2023-01-03
-    # end_time: 结束时间， 如: 2023-01-31 
-    # level: 数据， "level1" 或 "level2"
+.. attention:: 每个因子策略 **仅保留每个日期的最新结果** ，如需对比因子数据，请手动保存每次的运行结果！
 
-例如 : 
 
-    以安装在Windows电脑为例，安装目录为下载(Downloads)目录下; 策略路径为桌面的Strategy/strategy_demo/文件夹下
+.. image:: _images/运行因子6-30.png
 
+.. image:: _images/运行因子7-30.png
+    
 
-::
+【命令行】获取因子结果
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    C:\Users\kf\Downloads\kungfu\resources\kfc\kfc.exe -s "prod" backtest submit -f C:\Users\zmc\Desktop\Strategy\strategy_demo\MAStrategy.py -b 2023-01-03 -e 2023-01-31 -l "level2"
+.. note:: 支持在jupyter notebook中获取精选/自研因子结果、运行因子任务
 
+    - 建议在Anaconda环境中运行，Python为3.9版本
 
-.. image:: _images/back-1.png
+    - 下载jupyter notebook，如: pip install jupyter notebook   
 
-.. image:: _images/back-2.png
+    - 下载安装kungfu.whl文件，如: pip install {kungfu安装目录}\resources\kfc\kungfu-wheel\kungfu-x.x.x-cp39-cp39-win_amd64.whl
 
-
-查看回测可用数据
-^^^^^^^^^^^^^^^^
-
-    跟提交回测submit里的开始时间-b，结束时间-e强相关
-
-::
-
-    kfc -s {stage} backtest datarange   
-
-    # stage: 回测环境，"prod"
-
-例如 : 
-
-    以安装在Windows电脑为例，安装目录为下载(Downloads)目录下
-
-::
-
-    C:\Users\kf\Downloads\kungfu\resources\kfc\kfc.exe -s "prod" backtest datarange   
-
-
-.. image:: _images/datarange.png
-
-
-因子数据
--------------
-
-    获取因子数据
-
-.. note:: 
-
-   - 需要先登录
-
-     - kungfu客户端直接登录
-     - 命令登录
-
-   - 获取的数据为每日提供的精选因子数据
-
-   - 可在 jupyter notebook中运行
-
-     - 建议在Anaconda环境中运行，Python为3.9版本
-     - 下载jupyter notebook，如: pip install jupyter notebook   
-     - 下载安装kungfu.whl文件，如: pip install {kungfu安装目录}\resources\kfc\kungfu-wheel\kungfu-x.x.x-cp39-cp39-win_amd64.whl
-     - 运行 jupyter notebook，如: python -m jupyter notebook
-
-
-
-登录客户端
-~~~~~~~~~~~~~
-
-
-(1) 点击左侧边栏“登录功夫”按钮
-
-.. image:: _images/登录客户端.png
-
-(2) 选择“登录功夫”
-
-.. image:: _images/登录-1.png
-
-(3) 输入手机号、验证码, 点击确认完成登录
-
-.. image:: _images/登录-2.png
+    - 运行 jupyter notebook，如: python -m jupyter notebook
 
 
 模块引用
-~~~~~~~~~~~~~
+^^^^^^^^^
 
     引用kungfu模块
 
 ::
 
+    import kungfu
     from kungfu.serverless.store import FeatureStore
 
 
 选择环境
-~~~~~~~~~~~~~
+^^^^^^^^^^^
 
 ::
 
@@ -173,7 +111,7 @@ kfc文件路径
 
 
 登录账户
-~~~~~~~~~~~~~
+^^^^^^^^^^^
 
     手机号、验证码登录方式(客户端登录后可不用再次登录)
 
@@ -182,32 +120,101 @@ kfc文件路径
     fs.login(18686868886)
 
 
-因子类型获取
-~~~~~~~~~~~~~
+精选因子
+^^^^^^^^^^^
+
+
+获取精选因子列表
+++++++++++++++++++
 
 ::
 
     fs.list_public_features()
 
+    # 接口返回精选因子列表，如下，想查看的精选因子使用key值调用
     # [{'key': 'examples-cross-section-factor', 'name': '横截面多因子'}, {'key': 'main-inflow-factor', 'name': '主力流入因子'}]
 
 
-因子时间范围获取
-~~~~~~~~~~~~~~~~~
+获取精选因子可调用结果范围
++++++++++++++++++++++++++++
 
 ::
 
-    fs.get_public_feature_date_range("main-inflow-factor")
+    fs.get_public_feature_date_range(key)
+    
+    # 例如 : fs.get_public_feature_date_range("main-inflow-factor")
+    # 说明 : 接口返回以下内容：表示主力流入因子有20230105、20230104两日的数据
+    # 结果 : [datetime.datetime(2023, 1, 5, 0, 0), datetime.datetime(2023, 1, 4, 0, 0)]
 
-    # 获取 主力流入因子 的时间范围
-    # [datetime.datetime(2023, 1, 5, 0, 0), datetime.datetime(2023, 1, 4, 0, 0)]
+
+获取精选因子数据
+++++++++++++++++++
+::
+
+    fs.get_public_feature_data(key)
+
+    # 例如 : fs.get_public_feature_data("main-inflow-factor")
+    # 说明：获取 主力流入因子 在设定日期内的数据
 
 
-因子数据获取
-~~~~~~~~~~~~~
+
+自研因子
+^^^^^^^^^^^
+
+.. note:: 
+
+    - 获取自研因子的前提是在客户端上运行了自研因子
+
+
+获取自研因子列表
+++++++++++++++++++
 
 ::
 
-    fs.get_public_feature_data("main-inflow-factor")
+    fs.list_features()
 
-    # 获取 主力流入因子 在其时间段内的数据
+    # 说明 : 接口返回自研因子列表如下，想查看的自研因子使用key值调用(key为策略ID)
+    # 结果 : [{'key': '111', 'name': '111'}, {'key': 'CrossSectionFactorDemo', 'name': 'CrossSectionFactorDemo'}]
+
+
+获取自研因子可调用结果范围
+++++++++++++++++++++++++++++++++++++
+
+::
+
+    fs.get_feature_date_range(key)
+    
+    # 例如 : fs.get_feature_date_range("CrossSectionFactorDemo")
+    # 说明 : 获取key为 CrossSectionFactorDemo 这个策略的
+    # 结果 : [datetime.datetime(2024, 3, 14, 0, 0), datetime.datetime(2024, 3, 18, 0, 0)]
+
+
+获取自研因子数据
+++++++++++++++++++
+::
+
+    fs.get_feature_data(key)
+
+    # 例如 : fs.get_feature_data("CrossSectionFactorDemo")
+    # 说明 : 获取key为 CrossSectionFactorDemo 这个策略的
+
+
+
+获取精选因子源码
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+精选因子源码支持拷贝到本地，可以通过源码参考写法/修改参数改造为自己的alpha！
+
+(1) 在“精选”面板，选中想拷贝的 **精选因子**
+
+.. image:: _images/一键自研1-30.png
+
+(2) 点击 **一键自研，选择保存路径，填写备注** ，点击确定
+
+.. image:: _images/一键自研2-30.png
+
+(3) 精选因子源码已拷贝成功，可在客户端内点击“编辑”查看源码
+
+.. image:: _images/一键自研3-30.png
+
+
