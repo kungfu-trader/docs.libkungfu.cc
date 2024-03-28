@@ -86,7 +86,7 @@
 
     - 下载jupyter notebook，如: pip install jupyter notebook   
 
-    - 下载安装kungfu.whl文件，如: pip install {kungfu安装目录}\resources\kfc\kungfu-wheel\kungfu-x.x.x-cp39-cp39-win_amd64.whl
+    - 下载安装kungfu.whl文件，如: pip install {kungfu安装目录}\\resources\\kfc\\kungfu-wheel\\kungfu-x.x.x-cp39-cp39-win_amd64.whl
 
     - 运行 jupyter notebook，如: python -m jupyter notebook
 
@@ -154,8 +154,7 @@
     fs.get_public_feature_data(key)
 
     # 例如 : fs.get_public_feature_data("main-inflow-factor")
-    # 说明：获取 主力流入因子 在设定日期内的数据
-
+    # 说明：获取 主力流入因子 所有数据
 
 
 自研因子
@@ -173,7 +172,7 @@
 
     fs.list_features()
 
-    # 说明 : 接口返回自研因子列表如下，想查看的自研因子使用key值调用(key为策略ID)
+    # 说明 : 接口返回自研因子列表如下，使用key值调用想查看的自研因子结果 (key为策略ID, name为策略备注)
     # 结果 : [{'key': '111', 'name': '111'}, {'key': 'CrossSectionFactorDemo', 'name': 'CrossSectionFactorDemo'}]
 
 
@@ -185,7 +184,7 @@
     fs.get_feature_date_range(key)
     
     # 例如 : fs.get_feature_date_range("CrossSectionFactorDemo")
-    # 说明 : 获取key为 CrossSectionFactorDemo 这个策略的
+    # 说明 : 获取key为 CrossSectionFactorDemo 这个策略的可调用结果列表 (返回的数据说明该因子在2024-3-14、2024-3-18有结果)
     # 结果 : [datetime.datetime(2024, 3, 14, 0, 0), datetime.datetime(2024, 3, 18, 0, 0)]
 
 
@@ -196,7 +195,7 @@
     fs.get_feature_data(key)
 
     # 例如 : fs.get_feature_data("CrossSectionFactorDemo")
-    # 说明 : 获取key为 CrossSectionFactorDemo 这个策略的
+    # 说明 : 获取key为 CrossSectionFactorDemo 这个策略的全部因子结果
 
 
 
