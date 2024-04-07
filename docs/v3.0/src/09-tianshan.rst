@@ -117,7 +117,7 @@
     fs.login(18686868886)
 
 
-.. image:: _images/logo示例图.png
+.. image:: _images/login示例图.png
 
 
 精选因子
