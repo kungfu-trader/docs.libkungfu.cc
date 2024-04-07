@@ -94,20 +94,17 @@
 模块引用
 ^^^^^^^^^
 
-    引用kungfu模块
-
 ::
 
-    import kungfu
     from kungfu.serverless.store import FeatureStore
 
 
-选择环境
+初始化
 ^^^^^^^^^^^
 
 ::
 
-    fs = FeatureStore("prod")
+    fs = FeatureStore()
 
 
 登录账户
@@ -118,6 +115,9 @@
 ::
 
     fs.login(18686868886)
+
+
+.. image:: _images/logo示例图.png
 
 
 精选因子
