@@ -149,6 +149,7 @@
 
 获取精选因子数据
 ++++++++++++++++++
+
 ::
 
     fs.get_public_feature_data(key)
@@ -159,6 +160,7 @@
 
 根据日期获取精选因子计算结果
 ++++++++++++++++++++++++++++++
+
 ::
 
     fs.get_public_feature_data_by_date(key, date)
@@ -201,6 +203,7 @@
 
 获取自研因子数据
 ++++++++++++++++++
+
 ::
 
     fs.get_feature_data(key)
@@ -211,6 +214,7 @@
 
 根据日期获取自研因子计算结果
 ++++++++++++++++++++++++++++++
+
 ::
 
     fs.get_feature_data_by_date(key, date)
