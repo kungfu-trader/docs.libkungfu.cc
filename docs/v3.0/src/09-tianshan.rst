@@ -131,8 +131,8 @@
 
     fs.list_public_features()
 
-    # 接口返回精选因子列表，如下，想查看的精选因子使用key值调用
     # [{'key': 'examples-cross-section-factor', 'name': '横截面多因子'}, {'key': 'main-inflow-factor', 'name': '主力流入因子'}]
+    # 说明：接口返回以上内容，表示有“横截面多因子”“主力流入因子”两个精选因子。如果想查看因子列表，请使用key值调用
 
 
 获取精选因子可调用结果范围
@@ -142,9 +142,11 @@
 
     fs.get_public_feature_date_range(key)
     
-    # 例如 : fs.get_public_feature_date_range("main-inflow-factor")
-    # 说明 : 接口返回以下内容：表示主力流入因子有2024-03-14, 2024-03-15, 2024-03-18这几日的数据
-    # 结果 : ['2024-03-14', '2024-03-15', '2024-03-18']
+    # 例如：fs.get_public_feature_date_range("main-inflow-factor")
+    # 说明：请求main-inflow-factor 这个因子策略可调用的结果范围
+
+    # 结果：['2024-03-14', '2024-03-15', '2024-03-18']
+    # 说明：接口返回以上内容，表示主力流入因子有2024-03-14, 2024-03-15, 2024-03-18三日的数据可供调用
 
 
 获取精选因子数据
@@ -153,8 +155,8 @@
 
     fs.get_public_feature_data(key)
 
-    # 例如 : fs.get_public_feature_data("main-inflow-factor")
-    # 说明：获取 主力流入因子 所有数据
+    # 例如：fs.get_public_feature_data("main-inflow-factor")
+    # 说明：请求 main-inflow-factor 这个精选因子所有数据
 
 
 根据日期获取精选因子计算结果
@@ -183,7 +185,7 @@
 
     fs.list_features()
 
-    # 说明 : 接口返回自研因子列表如下，使用key值调用想查看的自研因子结果 (key为因子ID, name为备注)
+    # 说明 : 接口返回自研因子列表如下，使用key值调用想查看的自研因子结果 (key=策略ID, name=策略ID)
     # 结果 : [{'key': 'CrossSectionFactorDemo', 'name': 'CrossSectionFactorDemo'}]
 
 
@@ -195,8 +197,9 @@
     fs.get_feature_date_range(key)
     
     # 例如 : fs.get_feature_date_range("CrossSectionFactorDemo")
+    # 结果 : ['2024-03-19', '2024-03-21']
     # 说明 : 获取key为 CrossSectionFactorDemo 这个策略因子的可调用结果列表 (返回的数据说明该因子在2024-3-19、2024-3-21有结果)
-    # 结果 :['2024-03-19', '2024-03-21']
+
 
 
 获取自研因子数据
