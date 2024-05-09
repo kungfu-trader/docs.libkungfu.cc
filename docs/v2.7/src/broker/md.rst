@@ -392,32 +392,32 @@ on_band
     void MarketDataXTP::OnTickByTick(XTPTBT *tbt_data) {
         if (tbt_data->type == XTP_TBT_ENTRUST) {
             if (tbt_data->entrust.ord_type == 'D') {
-            if (not transaction_band_writer_) {
-                if (not has_band_writer(transaction_band_uid_)) {
-                return;
+                if (not transaction_band_writer_) {
+                    if (not has_band_writer(transaction_band_uid_)) {
+                        return;
+                    }
+                    transaction_band_writer_ = get_band_writer(transaction_band_uid_);
                 }
-                transaction_band_writer_ = get_band_writer(transaction_band_uid_);
-            }
-            Transaction &transaction = transaction_band_writer_->open_data<Transaction>(0);
-            from_xtp(*tbt_data, transaction);
-            transaction_band_writer_->close_data();
+                Transaction &transaction = transaction_band_writer_->open_data<Transaction>(0);
+                from_xtp(*tbt_data, transaction);
+                transaction_band_writer_->close_data();
             } else {
-            if (not entrust_band_writer_) {
-                if (not has_band_writer(entrust_band_uid_)) {
-                return;
+                if (not entrust_band_writer_) {
+                    if (not has_band_writer(entrust_band_uid_)) {
+                    return;
+                    }
+                    entrust_band_writer_ = get_band_writer(entrust_band_uid_);
                 }
-                entrust_band_writer_ = get_band_writer(entrust_band_uid_);
-            }
-            Entrust &entrust = entrust_band_writer_->open_data<Entrust>(0);
-            from_xtp(*tbt_data, entrust);
-            entrust_band_writer_->close_data();
+                Entrust &entrust = entrust_band_writer_->open_data<Entrust>(0);
+                from_xtp(*tbt_data, entrust);
+                entrust_band_writer_->close_data();
             }
         } else if (tbt_data->type == XTP_TBT_TRADE) {
             if (not transaction_band_writer_) {
-            if (not has_band_writer(transaction_band_uid_)) {
-                return;
-            }
-            transaction_band_writer_ = get_band_writer(transaction_band_uid_);
+                if (not has_band_writer(transaction_band_uid_)) {
+                    return;
+                }
+                transaction_band_writer_ = get_band_writer(transaction_band_uid_);
             }
             Transaction &transaction = transaction_band_writer_->open_data<Transaction>(0);
             from_xtp(*tbt_data, transaction);

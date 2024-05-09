@@ -27,7 +27,7 @@
         // Kungfu本地算法单添加
         virtual bool insert_algo_order(const event_ptr &event);
 
-        // 委托撤单
+        // 委托撤单(预埋撤单和普通撤单)
         virtual bool cancel_order(const event_ptr &event) = 0;
 
         // 预埋单撤单
@@ -51,7 +51,7 @@
         // 两融合约查询
         virtual bool req_contract();
 
-        // 查询算法单（系统未调用，最后再确认）
+        // 查询算法单（系统未调用, 最后再确认）
         virtual bool req_algo_order(const event_ptr &event);
 
         // 查询历史委托
@@ -66,7 +66,7 @@
         // 收到一个TimeKeyValue数据时触发回调
         virtual void on_time_key_value(const event_ptr &event) {}
 
-        // 收到一个策略的Deregister数据时触发回调，表明Master检测到该进程已经退出
+        // 收到一个策略的Deregister数据时触发回调, 表明Master检测到该进程已经退出
         virtual bool on_strategy_exit(const event_ptr &event);
 
         // TD启动时处理风控信息
@@ -82,10 +82,10 @@
         [[nodiscard]] yijinjing::journal::writer_ptr get_position_writer() const;
 
         
-        // 启动时第一次获取到的资金Asset写到PUBLIC，每分钟同步时需要写到SYNC，调用该函数进行切换
+        // 启动时第一次获取到的资金Asset写到PUBLIC, 每分钟同步时需要写到SYNC, 调用该函数进行切换
         void enable_asset_sync();
 
-        // 启动时第一次获取到的持仓Position写到PUBLIC，每分钟同步时需要写到SYNC，调用该函数进行切换
+        // 启动时第一次获取到的持仓Position写到PUBLIC, 每分钟同步时需要写到SYNC, 调用该函数进行切换
         void enable_positions_sync();
 
         [[nodiscard]] const OrderMap &get_orders() const;
@@ -180,12 +180,13 @@
 insert_order
 ^^^^^^^^^^^^^
 
+普通委托报单
 
 **virtual bool insert_order(const event_ptr &event) = 0;**
 
 
 收到委托报单输入OrderInput时会调用该函数, 调用 `event->data<OrderInput>()` 获取委托内容, 
-将OrderInput中的待报单信息，按照柜台api的要求直接填写或者构建所需的消息体后填写，调用api完成报单发送。
+将OrderInput中的待报单信息, 按照柜台api的要求直接填写或者构建所需的消息体后填写, 调用api完成报单发送.
 
 报单完成后TD需要生成一个Order写回给报单的进程, 通知该笔委托的状态.
 
@@ -379,23 +380,28 @@ API的委托报单接口分为同步和异步两种,
     }
 
 
+----------------------------------
+
 
 insert_order_trigger
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+预埋单下单报单
 
 **virtual bool insert_order_trigger(const event_ptr &event);**
 
 
 收到预埋单输入OrderTriggerInput时会调用该函数, 调用 `event->data<OrderTriggerInput>()` 获取预埋单内容.
 
-将OrderTriggerInput中的待报预埋单信息，按照柜台api的要求直接填写或者构建所需的消息体后填写，调用api完成报预埋单发送。
+将OrderTriggerInput中的待报预埋单信息, 按照柜台api的要求直接填写或者构建所需的消息体后填写, 调用api完成报预埋单发送.
 
 报单完成后TD需要生成一个OrderTrigger写回给报单的进程, 通知预埋单的状态.
 
-.. 通常api的报预埋单是同步接口，会直接返回报预埋单结果，需要对该值做处理，最终将api报预埋单的执行结果以bool形式返回。
-.. 将OrderTrigger写回给调用报单的进程实例。
-.. 同时，为了后续交易所报撤单以及成交回报返回时能够与本地记录做好映射，因此通常会在此维护一些map存储相关标识信息。
+.. 通常api的报预埋单是同步接口, 会直接返回报预埋单结果, 需要对该值做处理, 最终将api报预埋单的执行结果以bool形式返回.
+.. 将OrderTrigger写回给调用报单的进程实例.
+.. 同时, 为了后续交易所报撤单以及成交回报返回时能够与本地记录做好映射, 因此通常会在此维护一些map存储相关标识信息.
+
+
 
 
 参数
@@ -427,6 +433,7 @@ insert_order_trigger
 .. code-block:: cpp
     :linenos: 
 
+    // ctp的预埋下单为异步接口, 在响应接口才能获取到预埋单委托号 ParkedOrderID
     bool TraderCTP::insert_order_trigger(const event_ptr &event) {
         const OrderTriggerInput &trigger_input = event->data<OrderTriggerInput>();
         SPDLOG_DEBUG("OrderTriggerInput: {}", trigger_input.to_string());
@@ -470,21 +477,75 @@ insert_order_trigger
         return error_id == 0;
     }
 
+    // ctp预埋下单响应
+    bool TraderCTP::custom_OnRspParkedOrderInsert(const CThostFtdcParkedOrderField &ParkedOrder,
+                                              const CThostFtdcRspInfoField &RspInfo, int nRequestID, bool bIsLast) {
+        SPDLOG_DEBUG("CThostFtdcParkedOrderField: {}", to_string(ParkedOrder));
+        SPDLOG_DEBUG("CThostFtdcRspInfoField: {}", to_string(RspInfo));
+        SPDLOG_DEBUG("nRequestID: {}, bIsLast: {}", nRequestID, bIsLast);
+
+        auto trigger_id_iter = map_request_id_to_kf_order_id_.find(nRequestID);
+        if (trigger_id_iter == map_request_id_to_kf_order_id_.end()) {
+            SPDLOG_ERROR("CANNOT FIND trigger_id of {} in map_request_id_to_kf_order_id_", nRequestID);
+            return false;
+        }
+
+        auto trigger_id = trigger_id_iter->second;
+        if (not has_order_trigger(trigger_id)) {
+            SPDLOG_ERROR("CANNOT FIND tigger_id {} in triggers_", trigger_id);
+            return false;
+        }
+
+        auto &trigger_state = get_order_trigger(trigger_id);
+        map_trigger_id_to_ParkedOrderID_.insert_or_assign(trigger_id,
+                                                            std::pair<std::string, bool>{ParkedOrder.ParkedOrderID, false});
+        map_ParkedOrderId_to_trigger_id_.insert_or_assign(ParkedOrder.ParkedOrderID, trigger_id);
+        trigger_state.data.status = parked_status_to_trigger_status(ParkedOrder.Status);
+        strncpy(trigger_state.data.external_trigger_id, ParkedOrder.ParkedOrderID, strlen(ParkedOrder.ParkedOrderID));
+        trigger_state.data.error_id = RspInfo.ErrorID;
+        const std::string msg = gbk2utf8(RspInfo.ErrorMsg);
+        strncpy(trigger_state.data.error_msg, msg.c_str(), msg.length());
+        trigger_state.data.update_time = time::now_in_nano();
+
+        if (RspInfo.ErrorID != 0) {
+            trigger_state.data.status = OrderStatus::Error;
+            SPDLOG_ERROR("failed to insert order, ErrorId: {} ErrorMsg: {}, parked_order: {}", RspInfo.ErrorID,
+                        gbk2utf8(RspInfo.ErrorMsg), to_string(ParkedOrder));
+        }
+
+        try_write_to(trigger_state.data, trigger_state.dest);
+        SPDLOG_DEBUG("OrderTrigger: {}", trigger_state.data.to_string());
+
+        return true;
+    }
+
+
+.. note::
+
+   预埋下单一般是在休盘时间报单, 委托信息挂在ctp服务器上, 当开盘时自动将委托信息提交到交易所.
+
+   在预埋单开盘触发前可以撤销, 但是开盘触发后, 不论下单是否成功, ctp都不会推送预埋单的状态信息, 需要手动查询才能获取预埋单的最新状态信息.
+
+
+-----------------------------------------------
 
 
 insert_block_order
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+大宗交易报单
 
 **virtual bool insert_block_order(const event_ptr &event, const longfist::types::BlockMessage &block_message);**
 
-依据event以及block_message中的输入信息完成向券商柜台报大宗单。
 
-策略或者前端下大宗单后，待报大宗单信息将会存在event->data<OrderInput>()中，需要使用前做转化。
-将OrderInput以及block_message中的待报大宗单信息，按照柜台api的要求直接填写或者构建所需的消息体后填写，调用api完成报大宗单发送。
-通常api的报大宗单是同步接口，会直接返回报大宗单结果，需要对该值做处理，最终将api报大宗单的执行结果以bool形式返回。
-接下来将Order写回给调用报单的进程实例。
-同时，为了后续交易所报撤单以及成交回报返回时能够与本地记录做好映射，因此通常会在此维护一些map存储相关标识信息。
+大宗交易报单和普通委托报单类似, 委托信息存在event->data<OrderInput>()里, 区别是多了和大宗交易相关的额外信息BlockMessage, 
+按照柜台api的要求直接填写或者构建所需的消息体后填写, 调用api完成报大宗单发送.
+
+报单完成后TD需要生成一个Order写回给报单的进程, 通知该笔委托的状态.
+
+.. 通常api的报大宗单是同步接口, 会直接返回报大宗单结果, 需要对该值做处理, 最终将api报大宗单的执行结果以bool形式返回.
+.. 接下来将Order写回给调用报单的进程实例.
+.. 同时, 为了后续交易所报撤单以及成交回报返回时能够与本地记录做好映射, 因此通常会在此维护一些map存储相关标识信息.
 
 
 参数
@@ -519,70 +580,114 @@ insert_block_order
 .. code-block:: cpp
     :linenos: 
 
+    // 金证股票柜台的大宗交易报单
+    bool TraderMaCli::insert_block_order(const event_ptr &event, const longfist::types::BlockMessage &block_message) {
+        const OrderInput &order_input = event->data<OrderInput>();
+        SPDLOG_DEBUG("OrderInput Message : {}", order_input.to_string());
+
+        const int64_t request_id = get_request_id();
+        auto nano = kungfu::yijinjing::time::now_in_nano();
+        auto writer = get_writer(event->source());
+        Order &order = writer->open_data<Order>(event->gen_time());
+        order_from_input(order_input, order);
+        set_offset(order);
+        order.status = OrderStatus::Pending;
+        order.insert_time = nano;
+        order.update_time = nano;
+
+        map_request_to_order_.emplace(request_id, order.order_id);
+
+        CReqStkOrderField stField{};
+        auto iter_maStkUserLoginFiled = map_maszStkbd_to_maStkUserLoginFiled_.find(
+            kf_to_macli_exchange_id(order_input.exchange_id, stField.szStkbd));  
+        if (iter_maStkUserLoginFiled == map_maszStkbd_to_maStkUserLoginFiled_.end()) {
+            const std::string msg = "找不到和交易板块" + std::string(stField.szStkbd) + "对应的用户下单信息, 无法下单";
+            SPDLOG_ERROR("找不到和交易板块{}对应的用户下单信息, 无法下单", stField.szStkbd);
+            order.status = OrderStatus::Error;
+            order.error_id = -1;
+            strncpy(order.error_msg, msg.c_str(), msg.length());
+            SPDLOG_DEBUG("Order: {}", order.to_string());
+            writer->close_data();
+            return false;
+        }
+        const CRspStkUserLoginField &login_filed = iter_maStkUserLoginFiled->second;
+        stField.llCuacctCode = login_filed.llCuacctCode;                                     
+        stField.llCustCode = login_filed.llCustCode;                                         
+        strncpy(stField.szTrdacct, login_filed.szStkTrdacct, 20);                            
+        strncpy(stField.szStkCode, order_input.instrument_id, 8);                            
+        strncpy(stField.szOrderPrice, std::to_string(order_input.limit_price).c_str(), 21);  
+        stField.llOrderQty = order_input.volume / get_vol_multi(order_input.exchange_id,
+                                                                get_instrument_type(order_input.exchange_id,
+                                                                                    order_input.instrument_id));  
+        if (order_input.instrument_type == InstrumentType::Repo) {
+            if (order_input.side != Side::Sell) {
+            order.status = OrderStatus::Error;
+            order.error_id = -1;
+            strncpy(order.error_msg, "逆回购只能以Sell方式下单", ERROR_MSG_LEN);
+            SPDLOG_DEBUG("Order: {}", order.to_string());
+            writer->close_data();
+            return false;
+            }
+            stField.iStkBiz = 165;  
+        } else {
+            stField.iStkBiz = kf_to_macli_iStkBiz(order_input.side); 
+        }
+        stField.iStkBizAction = kf_to_macli_iStkBizAction(order_input); 
+        strncpy(stField.szClientInfo, cust_trace_info_.c_str(), 256);   
+        stField.chSecurityLevel = '1';                                          
+        int iOrderBsn = int(order_input.order_id & 0x0000FFFF);  
+        stField.iOrderBsn = iOrderBsn;                           
+        stField.iCuacctSn = iCuacctSn_;                          
+
+        /// 大宗交易需要额外填写的信息
+        if (order_input.block_id != 0) {
+            stField.llMatchNo = block_message.match_number;  // 成交约定号
+            std::string str_REDUCT = block_message.is_specific ? "REDUCT=1" : "REDUCT=0";
+            stField.iStkBiz = kf_to_macli_block_iStkBiz(order_input);
+            strncpy(stField.szOpptStkpbu, block_message.opponent_seat, 8);
+            strncpy(stField.szOrderText, str_REDUCT.c_str(), 256);
+        }
+
+        SPDLOG_DEBUG("CReqStkOrderField: {}", to_string(stField));
+        int ret = api_->ReqOrder(&stField, request_id);
+        SPDLOG_DEBUG("ReqOrder ret: {}", ret);
+        if (0 != ret) {
+            const std::string msg = gbk2utf8(api_->GetLastErrorText());
+            SPDLOG_ERROR("下单失败, return code: {}, error msg: {}", ret, msg);
+            order.status = OrderStatus::Error;
+            order.error_id = ret;
+            strncpy(order.error_msg, msg.c_str(), msg.length());
+        }
+
+        SPDLOG_DEBUG("Order: {}", order.to_string());
+        writer->close_data();
+        return 0 == ret;
+    }
+
+
+.. note::
+
+   大部分柜台的大宗交易报单和普通委托报单是同一个委托函数, 委托响应函数也想通, 区别只是是否填写了大宗交易相关的信息: 对手方席号, 成交约定号, 是否受限(特定)股份
+
+
+
+-----------------------------------------
 
 
 insert_batch_orders
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+批量委托报单
 
 **virtual bool insert_batch_orders(const event_ptr &event, const OrderInputs &order_inputs);**
 
-依据order_inputs中的输入信息完成向券商柜台报批量单。
+有的柜台可能会有流控限制, 发送消息的数量有限制, 如果需要一次性报很多笔委托, 需要用到批量委托接口, 依据order_inputs中的输入信息完成向券商柜台报批量单.
 
-策略或者前端下批量单后，待报批量单信息将会存在order_inputs中。
-将order_inputs中的待报批量单信息，按照柜台api的要求直接填写或者构建所需的消息体后填写，调用api完成报批量单发送。
-通常api的报批量单是同步接口，会直接返回报批量单结果，需要对该值做处理，最终将api报批量单的执行结果以bool形式返回。
-将批量单中每一笔对应的Order写回给调用报单的进程实例。
-同时，为了后续交易所报撤单以及成交回报返回时能够与本地记录做好映射，因此通常会在此维护一些map存储相关标识信息。
-
-
-参数
-
-.. list-table::
-    :width: 600px
-
-    * - 参数
-      - 类型
-      - 说明
-    * - event
-      - const event_ptr &
-      - 包含待报批量单来源和触发时间等信息
-    * - order_inputs
-      - const OrderInputs &
-      - 包含待报批量单的信息
-
-
-返回值
-
-.. list-table::
-   :width: 600px
-
-   * - 类型
-     - 说明
-   * - bool
-     - 批量报单成功返回true, 批量报单失败返回false
-
-
-范例
-
-.. code-block:: cpp
-    :linenos: 
-
-
-
-insert_algo_order
-^^^^^^^^^^^^^^^^^^^^^^^
-
-
-**virtual bool insert_algo_order(const event_ptr &event);**
-
-依据order_inputs中的输入信息完成向券商柜台报批量单。
-
-策略或者前端下批量单后，待报批量单信息将会存在order_inputs中。
-将order_inputs中的待报批量单信息，按照柜台api的要求直接填写或者构建所需的消息体后填写，调用api完成报批量单发送。
-通常api的报批量单是同步接口，会直接返回报批量单结果，需要对该值做处理，最终将api报批量单的执行结果以bool形式返回。
-将批量单中每一笔对应的Order写回给调用报单的进程实例。
-同时，为了后续交易所报撤单以及成交回报返回时能够与本地记录做好映射，因此通常会在此维护一些map存储相关标识信息。
+策略或者前端下批量单后, 待报批量单信息将会存在order_inputs中.
+将order_inputs中的待报批量单信息, 按照柜台api的要求直接填写或者构建所需的消息体后填写, 调用api完成报批量单发送.
+.. 通常api的报批量单是同步接口, 会直接返回报批量单结果, 需要对该值做处理, 最终将api报批量单的执行结果以bool形式返回.
+.. 将批量单中每一笔对应的Order写回给调用报单的进程实例.
+.. 同时, 为了后续交易所报撤单以及成交回报返回时能够与本地记录做好映射, 因此通常会在此维护一些map存储相关标识信息.
 
 
 参数
@@ -616,22 +721,193 @@ insert_algo_order
 
 .. code-block:: cpp
     :linenos: 
+
+    // 华锐股票柜台批量委托报单
+    bool TraderAtp::insert_batch_orders(const event_ptr &event, const broker::OrderInputs &order_inputs) {
+        SPDLOG_DEBUG("insert_batch_orders");
+        auto writer = get_writer(event->source());
+        std::vector<uint64_t> orderids{};
+        ATPReqBatchCashAuctionOrderMsg msg{};
+        int64_t nano = time::now_in_nano();
+        OrderInput first_order = order_inputs.front();
+        for (const OrderInput &order_input : order_inputs) {
+            APIBatchCashAuctionOrderUnit unit{};
+            strcpy(unit.security_id, order_input.instrument_id);              
+            kf_exchange_2_hr_market(order_input.exchange_id, unit.market_id); 
+            kf_side_2_hr_side(order_input.side, unit.side);                   
+            unit.order_qty = ATPTradeAPI::DoubleExpandToInt(
+                double(order_input.volume) /
+                    get_vol_multi(order_input.instrument_id, order_input.exchange_id, order_input.instrument_type),
+                2); 
+            unit.price = ATPTradeAPI::DoubleExpandToInt(order_input.limit_price, 4);
+            kf_price_type_2_hr_order_type(order_input.price_type, unit.order_type); 
+            kf_exchange_2_hr_market(order_input.exchange_id, msg.market_id);        
+            msg.order_array.push_back(unit);
+            SPDLOG_DEBUG("APIBatchCashAuctionOrderUnit: {}", to_string(unit));
+
+            auto &order = writer->open_data<Order>(event->gen_time());
+            order_from_input(order_input, order);
+            order.insert_time = nano;
+            order.update_time = nano;
+            order.status = OrderStatus::Pending;
+            SPDLOG_DEBUG("Order: {}", order.to_string());
+            writer->close_data();
+            orderids.push_back(order.order_id);
+        }
+
+        strcpy(msg.security_id, first_order.instrument_id); 
+        kf_exchange_2_hr_market(first_order.exchange_id,
+                                msg.market_id);                 
+        msg.side = ATPSideConst::kBuy;                          
+        msg.order_qty = ATPTradeAPI::DoubleExpandToInt(100, 2);         
+        msg.price = ATPTradeAPI::DoubleExpandToInt(10, 4);
+        msg.order_type = ATPOrdTypeConst::kOptimalFiveLevelFullDealTransferCancel; 
+
+        strcpy(msg.cust_id, cust_id_.c_str());                           
+        strcpy(msg.fund_account_id, td_config_.fund_account_id.c_str()); 
+        strcpy(msg.branch_id, td_config_.branch_id.c_str());             
+        msg.client_seq_id = get_client_seq_id();                        
+        msg.order_way = order_way_;                
+        strcpy(msg.password, str_cipher_.c_str()); 
+        msg.client_feature_code = str_trace_info_; 
+
+        switch (msg.market_id) {
+        case ATPMarketIDConst::kShangHai:
+            strcpy(msg.account_id, sh_account_id_.c_str());
+            break;
+        case ATPMarketIDConst::kShenZhen:
+            strcpy(msg.account_id, sz_account_id_.c_str());
+            break;
+        default:
+            SPDLOG_ERROR("Invalidated market_id : {}", msg.market_id);
+        }
+        msg.batch_type = ATPBatchTypeConst::kBatch; 
+        // 将华锐批量成交的id与kongfu的批量orderid相对应, 先添加map信息, 防止回调回来过快找不到对应的order_ids
+        map_client_to_orderids_.emplace(msg.client_seq_id, orderids);  
+        SPDLOG_DEBUG("ATPReqBatchCashAuctionOrderMsg: {}", to_string(msg));
+        int ret = atp_trader_api_ptr_->ReqBatchCashAuctionOrder(&msg); 
+        SPDLOG_DEBUG("ReqBatchCashAuctionOrder return code : {} , return message : {}", ret,
+                    map_error_code.try_emplace(ret).first->second);
+        if (ret != ErrorCode::kSuccess) {
+            SPDLOG_ERROR("FAILED TO INSERT ORDER ！");
+            return false;
+        }
+        return true;
+    }
+
+    // 华锐股票柜台批量委托回调
+    bool TraderAtp::custom_OnRspOrderStatusInternalAck(const BufferATPRspOrderStatusAckMsg &internal_ack) {
+        // 优先检测是否属于批量单
+        auto order_ids_iter = map_client_to_orderids_.find(internal_ack.client_seq_id);
+        if (order_ids_iter != map_client_to_orderids_.end()) {
+            std::vector<uint64_t> &orderids = order_ids_iter->second;
+            if (orderids.empty()) {
+            SPDLOG_ERROR("orderids of client_seq_id: {} is empty", internal_ack.client_seq_id);
+            return false;
+            }
+            uint64_t order_id = orderids.front();
+            map_kf_orderid_to_hr_cl_ord_no_.emplace(order_id, internal_ack.cl_ord_no);
+            map_hr_cl_ord_no_to_kf_orderid_.emplace(internal_ack.cl_ord_no, order_id);
+            orderids.erase(orderids.begin());
+
+            if (not has_order(order_id)) {
+            SPDLOG_WARN("order_id: {} not in orders_", order_id);
+            generate_real_time_external_order(internal_ack);
+            return false;
+            }
+
+            auto &order_state = get_order(order_id);
+
+            if (not is_final_status(order_state.data.status) or order_state.data.status == OrderStatus::Lost) {
+            hr_order_status_ack_2_kf_order(internal_ack, order_state.data);
+            // const std::string str_cl_ord_no = std::to_string(internal_ack.cl_ord_no);
+            // strncpy(order_state.data.external_order_id, str_cl_ord_no.c_str(), str_cl_ord_no.length());
+            if (order_state.data.status == OrderStatus::Error) {
+                order_state.data.error_id = internal_ack.reject_reason_code;
+                strncpy(order_state.data.error_msg,
+                        map_error_code.try_emplace(internal_ack.reject_reason_code).first->second.c_str(), ERROR_MSG_LEN);
+            }
+            order_state.data.update_time = time::now_in_nano();
+            if (OrderStatus ::Pending != order_state.data.status and has_writer(order_state.dest)) {
+                get_writer(order_state.dest)->write(order_state.data.update_time, order_state.data);
+            } else {
+                SPDLOG_WARN("no writer of {}:{}", order_state.dest, get_vendor().get_location_uname(order_state.dest));
+                SPDLOG_WARN("batch Order: {}", order_state.data.to_string());
+            }
+            SPDLOG_DEBUG("batch Order:{}", order_state.data.to_string());
+            }
+            try_deal_TradeERMsgs_(internal_ack.cl_ord_no);
+            return false;
+        }
+        // 余下为普通委托处理代码
+    }
+
+
+-------------------------------------------
+
+
+
+.. insert_algo_order
+.. ^^^^^^^^^^^^^^^^^^^^^^^
+
+
+.. **virtual bool insert_algo_order(const event_ptr &event);**
+
+.. 依据order_inputs中的输入信息完成向券商柜台报批量单.
+
+.. 策略或者前端下批量单后, 待报批量单信息将会存在order_inputs中.
+.. 将order_inputs中的待报批量单信息, 按照柜台api的要求直接填写或者构建所需的消息体后填写, 调用api完成报批量单发送.
+.. 通常api的报批量单是同步接口, 会直接返回报批量单结果, 需要对该值做处理, 最终将api报批量单的执行结果以bool形式返回.
+.. 将批量单中每一笔对应的Order写回给调用报单的进程实例.
+.. 同时, 为了后续交易所报撤单以及成交回报返回时能够与本地记录做好映射, 因此通常会在此维护一些map存储相关标识信息.
+
+
+.. 参数
+
+.. .. list-table::
+..     :width: 600px
+
+..     * - 参数
+..       - 类型
+..       - 说明
+..     * - event
+..       - const event_ptr &
+..       - 包含待报批量单来源和触发时间等信息
+..     * - order_inputs
+..       - const OrderInputs &
+..       - 包含待报批量单的信息
+
+
+.. 返回值
+
+.. .. list-table::
+..    :width: 600px
+
+..    * - 类型
+..      - 说明
+..    * - bool
+..      - 批量报单成功返回true, 批量报单失败返回false
+
+
+.. 范例
+
+.. .. code-block:: cpp
+..     :linenos: 
 
 
 
 cancel_order
 ^^^^^^^^^^^^^^^^^^^^
 
+普通撤单和预埋撤单
 
 **virtual bool cancel_order(const event_ptr &event) = 0;**
 
-依据event中的输入信息完成向券商柜台撤单。
+event->data<OrderAction>()中有一个OrderActionFlag枚举值, 表明是普通撤单还是预埋撤单.
 
-策略或者前端撤单后，待撤单信息将会存在event->data<OrderAction>()中，需要在使用前转化。
-将OrderAction中的待撤单信息，按照柜台api的要求直接填写或者构建所需的消息体后填写，调用api完成撤单发送。
-通常api的撤单是同步接口，会直接返回撤单结果，需要对该值做处理，最终将api撤单的执行结果以bool形式返回。
-将撤单失败对应的OrderActionError写回给调用报单的进程实例。
-同时，为了后续交易所报撤单以及成交回报返回时能够与本地记录做好映射，因此通常会在此维护一些map存储相关标识信息。
+按照柜台api的要求直接填写或者构建所需的消息体后填写, 调用api完成撤单发送.
+
+若撤单失败, 需要写一个OrderActionError给调用撤单的进程, 说明失败原因.
 
 
 参数
@@ -663,6 +939,7 @@ cancel_order
 .. code-block:: cpp
     :linenos: 
 
+    // CTP撤单实现
     bool TraderCTP::cancel_order(const event_ptr &event) {
         const OrderAction &action = event->data<OrderAction>();
         SPDLOG_DEBUG("order_action: {}", action.to_string());
@@ -764,20 +1041,29 @@ cancel_order
     }
 
 
+.. note::
+    普通撤单会触发委托推送, 和普通下单类似.
+
+    预埋撤单是在休盘时间提交, 开盘后立刻撤单, 同预埋下单一样, 触发前可以撤销, 触发后需要手动查询. 
+
+
+
+----------------------------------
+
 
 cancel_order_trigger
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
+预埋单撤销
+
 **virtual bool cancel_order_trigger(const event_ptr &event);**
 
-依据event中的输入信息完成向券商柜台撤预埋单。
+根据event->data<OrderTriggerAction>()的trigger_id找到对应的预埋单委托号, 
+按照柜台api的要求直接填写或者构建所需的消息体后填写, 调用api完成撤单发送.
 
-策略或者前端撤单后，待撤单信息将会存在event->data<OrderAction>()中，需要在使用前转化。
-将OrderAction中的待撤单信息，按照柜台api的要求直接填写或者构建所需的消息体后填写，调用api完成撤单发送。
-通常api的撤单是同步接口，会直接返回撤单结果，需要对该值做处理，最终将api撤单的执行结果以bool形式返回。
-将撤单失败对应的OrderActionError写回给调用报单的进程实例。
-同时，为了后续交易所报撤单以及成交回报返回时能够与本地记录做好映射，因此通常会在此维护一些map存储相关标识信息。
+
+如果撤单失败, 需要写一个OrderTriggerActionError给调用报单的进程, 说明失败原因.
 
 
 参数
@@ -875,17 +1161,25 @@ cancel_order_trigger
     }
 
 
+.. note::
+    撤销预埋单成功之后, 需要手动查询预埋单才能获取预埋单的最新状态. 
+
+
+
+----------------------------------
+
+
 req_position
 ^^^^^^^^^^^^^^^^^^^^
 
 **virtual bool req_position() = 0;**
 
-向券商柜台查询账户当前持仓。
+向券商柜台查询账户当前持仓.
 
-前端和策略可以主动查询当前账户持仓情况，同时系统也会每分钟自动触发一次查询以同步最新的持仓状态。
-将全局存储的账户等信息，按照柜台api的要求直接填写或者构建所需的消息体后填写，调用api完成持仓查询发送。
-通常api的持仓查询是异步接口，会返回查询执行结果，需要对该值做处理，最终将api查询的执行结果以bool形式返回。
-有的时候会遇到流速控制等情况，可以使用定时器等方式，若干秒后再次尝试查询账户持仓。
+前端和策略可以主动查询当前账户持仓情况, 同时系统也会每分钟自动触发一次查询以同步最新的持仓状态.
+将全局存储的账户等信息, 按照柜台api的要求直接填写或者构建所需的消息体后填写, 调用api完成持仓查询发送.
+通常api的持仓查询是异步接口, 会返回查询执行结果, 需要对该值做处理, 最终将api查询的执行结果以bool形式返回.
+有的时候会遇到流速控制等情况, 可以使用定时器等方式, 若干秒后再次尝试查询账户持仓.
 
 
 参数
@@ -940,12 +1234,12 @@ req_account
 
 **virtual bool req_account() = 0;**
 
-向券商柜台查询账户资金。
+向券商柜台查询账户资金.
 
-策略可以主动查询当前账户资金情况，同时系统也会每分钟默认触发一次查询以同步最新的资金状态。
-将全局存储的账户等信息，按照柜台api的要求直接填写或者构建所需的消息体后填写，调用api完成资金查询发送。
-通常api的资金查询是异步接口，会返回查询行为结果，需要对该值做处理，最终将api查询的执行结果以bool形式返回。
-有的时候会遇到流速控制等情况，可以使用定时器等方式，若干秒后再次尝试查询账户资金。
+策略可以主动查询当前账户资金情况, 同时系统也会每分钟默认触发一次查询以同步最新的资金状态.
+将全局存储的账户等信息, 按照柜台api的要求直接填写或者构建所需的消息体后填写, 调用api完成资金查询发送.
+通常api的资金查询是异步接口, 会返回查询行为结果, 需要对该值做处理, 最终将api查询的执行结果以bool形式返回.
+有的时候会遇到流速控制等情况, 可以使用定时器等方式, 若干秒后再次尝试查询账户资金.
 
 
 参数
@@ -1000,14 +1294,14 @@ req_history_order
 
 **virtual bool req_history_order(const event_ptr &event);**
 
-向券商柜台查询账户历史委托。
+向券商柜台查询账户历史委托.
 
-策略可以主动查询账户当日历史委托情况，同时前端如果开启了“恢复今日订单”会在启动时查询今日所有委托。
-将全局存储的账户等信息，按照柜台api的要求直接填写或者构建所需的消息体后填写，调用api完成历史委托查询发送。
-通常api的历史委托查询是异步接口，会返回查询行为结果，需要对该值做处理，最终将api查询的执行结果以bool形式返回。
-有的时候会遇到流速控制等情况，可以使用定时器等方式，若干秒后再次尝试查询账户历史委托。
-存储操作来源，方便获取对应writer，将柜台后续返回的历史委托信息写回给该进程。
-通常只能查询到当前交易日内的历史委托情况。
+策略可以主动查询账户当日历史委托情况, 同时前端如果开启了“恢复今日订单”会在启动时查询今日所有委托.
+将全局存储的账户等信息, 按照柜台api的要求直接填写或者构建所需的消息体后填写, 调用api完成历史委托查询发送.
+通常api的历史委托查询是异步接口, 会返回查询行为结果, 需要对该值做处理, 最终将api查询的执行结果以bool形式返回.
+有的时候会遇到流速控制等情况, 可以使用定时器等方式, 若干秒后再次尝试查询账户历史委托.
+存储操作来源, 方便获取对应writer, 将柜台后续返回的历史委托信息写回给该进程.
+通常只能查询到当前交易日内的历史委托情况.
 
 
 参数
