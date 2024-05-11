@@ -12,6 +12,7 @@
    04-example.rst
    05-api.rst
    06-configuration_information.rst
+   09-broker.rst
    07-development.rst
    08-changelog.rst
    
