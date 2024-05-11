@@ -9,10 +9,10 @@
    01-intro.rst
    02-tradingtask.rst
    03-kfs.rst
-   09-broker.rst
    04-example.rst
    05-api.rst
    06-configuration_information.rst
+   09-broker.rst
    07-development.rst
    08-changelog.rst
    

@@ -33,7 +33,7 @@ kungfu框架中进程间通信采用共享内存队列的形式, 一个进程将
 
 journal的结构如下图所示, 
 
-.. image:: broker/_images/journal.png
+.. image:: _images/journal.png
 
 
 ------------------------

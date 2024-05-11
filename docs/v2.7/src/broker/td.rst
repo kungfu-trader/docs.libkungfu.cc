@@ -1953,6 +1953,48 @@ req_contract
 
 
 
+.. insert_algo_order
+.. ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. **virtual bool insert_algo_order(const event_ptr &event);**
+
+.. 算法单添加
+
+.. ------------------------------------
+
+.. cancel_algo_order
+.. ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+.. **virtual bool cancel_algo_order(const event_ptr &event);**
+
+.. 算法单删除
+
+
+.. ------------------------------------
+
+.. toggle_algo_order
+.. ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+.. **virtual bool toggle_algo_order(const event_ptr &event);**
+
+.. 算法单启动/停止
+
+.. ------------------------------------
+
+.. on_band
+.. ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+.. **virtual bool req_algo_order(const event_ptr &event);**
+    
+.. 查询算法单（系统未调用, 最后再确认）
+
+.. ------------------------------------
+
+
+
 on_band
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -2089,8 +2131,8 @@ on_band
         } else {
             ++try_write_to_order_count;
             try_write_to(order_state.data, order_state.dest, [&]() {
-            --try_write_to_order_count;
-            try_ready();
+                --try_write_to_order_count;
+                try_ready();
             });
         }
         try_deal_trade(str_ExchangeID_OrderSysID); // 处理暂存的委托
@@ -2150,8 +2192,8 @@ on_band
             SPDLOG_DEBUG("Trade: {}", trade.to_string());
             ++try_write_to_trade_count;
             try_write_to(trade, order_state.dest, [&]() {
-            --try_write_to_trade_count;
-            try_ready();
+                --try_write_to_trade_count;
+                try_ready();
             });
         }
     }
