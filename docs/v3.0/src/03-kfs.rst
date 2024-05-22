@@ -59,8 +59,10 @@ kfc文件路径
     MacOS: {kungfu安装目录}/Contents/Resources/kfc/kfc
 
 
-linux下的数据读取工具 
------------------------
+linux下的journal数据读取
+-----------------------------
+
+  journal文件是功夫交易系统中记录进程行为的数据文件。journal文件具有极其丰富的数据信息，如Quote行情信息中记录了档位报价详细信息，可用于盘后复盘。
 
 
 获取sessions列表 
@@ -71,12 +73,18 @@ linux下的数据读取工具
     $ ./kfc journal sessions 
 
 
-读取所有信息 
+.. image:: _images/sessions展示.png
+
+
+数据详情展示 
 ^^^^^^^^^^^^^^^^
 
 ::
 
     $ ./kfc journal trace -i session_id 
+
+
+.. image:: _images/数据详情展示.png
 
 
 数据展示 
@@ -85,6 +93,9 @@ linux下的数据读取工具
 ::
 
     $ ./kfc journal show -i session_id 
+
+
+.. image:: _images/数据展示.png
 
 
 进程启动
