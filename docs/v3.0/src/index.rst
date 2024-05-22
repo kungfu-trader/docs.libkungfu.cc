@@ -12,6 +12,7 @@
    04-example.rst
    09-tianshan.rst
    05-api.rst
+   10-api-c++.rst
    06-configuration_information.rst
    07-development.rst
    08-changelog.rst

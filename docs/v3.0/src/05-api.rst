@@ -1,5 +1,5 @@
-策略API文档
-============
+python策略API文档
+==========================
 
 快速上手
 -----------
@@ -1434,13 +1434,13 @@ context.cancel_order
 投资组合相关功能
 ~~~~~~~~~~~~~~~~~~~~~
 
-盈亏及持仓
-~~~~~~~~~~~~~~~~~~~~~
+策略持仓维护相关
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 功夫系统支持实时维护策略收益及持仓及对应的历史记录，针对不同的应用场景，提供共计四种不同的维护收益及持仓的模式。对于任一策略，具体采用的模式由两个 API 决定：context.hold_book() 及 context.hold_positions()，使用者需要在策略的 pre_start() 方法里决定是否调用这两个方法，系统在 pre_start() 处理完成时会根据是否调用这两个方法对应出的共计四种状态来设置维护收益及持仓的结果。
 
 context.hold_book()
-^^^^^^^^^^^^^^^^^^^^^^^^^
++++++++++++++++++++++
 
 **保持策略运行历史上的交易过的标的。缺省设置即没有调用此方法时，系统只会维护当前策略代码中通过 subscribe 方法订阅过的标的；当调用此方法后，系统会在策略启动后，根据该同名策略在历史上的交易情况，构造一份包含所有该同名策略所交易过标的，及当前策略代码中通过 subscribe 订阅的标的的账目。注意此方法仅影响标的列表，对于每个标的的具体持仓数值，是由 hold_positions() 方法来决定。**
 
@@ -1459,7 +1459,7 @@ context.hold_book()
 
 
 context.hold_positions()
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+++++++++++++++++++++++++++++++
 
 **保持账目中每一标的的历史持仓。缺省设置即没有调用此方法时，系统会通过同步柜台查询到的持仓数据来构建策略账目，每次策略启动后，账目中所有标的的持仓都会同步为最新的柜台账户对应的持仓；当调用此方法后，系统会使用功夫内部记录的历史数据来恢复策略的账目持仓。缺省设置保证了策略账目中的持仓数据是绝对准确的，但无法反映功夫运行期间内的策略历史交易情况；如果需要获取之前运行策略时产生的历史持仓记录，则需要通过调用该方法来使系统使用本地存储的历史记录，在这种情况下，当因为各种因素（例如在功夫系统外使用别的软件对同一账户手动交易）都会使得功夫内部维护的持仓记录产生偏差，（例如同一账户下对应的不同策略持仓汇总之和不等于账户总持仓），当发生此类偏差时，建议使用缺省模式来从账户持仓恢复策略持仓。**
 
@@ -1473,8 +1473,70 @@ context.hold_positions()
     # 当调用 hold_positions() 方法后，策略启动后的账目中标的持仓等于上次运行策略结束时所对应的标的持仓：
     context.hold_positions()
 
-context.book
+Utils 状态判断
 ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. list-table::
+   :width: 600px
+
+   * - 属性
+     - 类型
+     - 说明
+   * - hash_instrument
+     - long
+     - 获取账户中某个标的信息对应的key值
+   * - is_valid_price
+     - bool
+     - 判断当前价格是否为有效价格
+   * - is_final_status
+     - bool
+     - 判断当前状态是否为最终状态
+   * - get_instrument_type
+     - :ref:`InstrumentType <InstrumentType对象>`
+     - 获取类型
+
+Utils范例::
+
+    # hash_instrument 案例示范
+    from pykungfu import wingchun as wc
+
+    # 1. 获取某个可交易标的信息对应的key值  wc.utils.hash_instrument(exchange_id, instrument_id)
+    instrument_key = wc.utils.hash_instrument("SHFE", "rb2405")
+    instrument = context.get_account_book(source,account).instruments[instrument_key]
+    context.log.info("instrument {}".format(instrument))
+
+    # 2. 获取某个标的持仓信息对应的key值  wc.utils.hash_instrument(account_uid, exchange_id, instrument_id)
+    account_uid = context.get_account_uid(source, account)
+    position_key = wc.utils.hash_instrument(account_uid, "SHFE", "au2404")
+    position = context.get_account_book(source,account).long_positions[position_key]
+    context.log.info("position {}".format(position))
+
+    # 3. 获取某个标的保证金信息对应的key值   wc.utils.hash_instrument(account_uid, exchange_id, instrument_id)
+    account_uid = context.get_account_uid(source, account)
+    instrument_factor_key = wc.utils.hash_instrument(account_uid, "SHFE", "ag2401")
+    instrument_factor = context.get_account_book(source,account).instrument_factors[instrument_factor_key]
+    context.log.info("instrument_factor {}".format(instrument_factor))
+
+    # 其他案例示范
+    def on_quote(context, quote, location, dest):
+        is_valid_price = wc.utils.is_valid_price(quote.last_price)
+        context.log.warning("当前价格是否为有效价格 {}".format(is_valid_price))
+
+
+    def on_order(context, order, location, dest):
+        is_valid_status = wc.utils.is_final_status(order.status)
+        context.log.warning("当前状态是否为最终状态 {}".format(is_valid_status))
+
+
+    def post_start(context):
+        ticker_instrument_type = wc.utils.get_instrument_type("SSE", "600000")
+        context.log.warning("标的的合约类型是 {}".format(ticker_instrument_type))
+
+投资组合相关
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+context.book
+++++++++++++++++++
 
 **策略的投资组合** (当前策略的投资组合信息)
 
@@ -1490,10 +1552,11 @@ context.book
     book = context.book
     context.log.warning("[strategy capital] (avail){} (margin){}".format(book.asset.avail, book.asset.margin))
 
-context.get_account_book(SOURCE, ACCOUNT)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**账户的投资组合** (选择的这个柜台的账户的持仓,账户资金等信息)
+context.get_account_book(SOURCE, ACCOUNT)
++++++++++++++++++++++++++++++++++++++++++++++++
+
+**账户的投资组合** (获取填写的这个柜台的账户的持仓,账户资金等信息)
 
 .. list-table::
    :width: 600px
@@ -1508,10 +1571,177 @@ context.get_account_book(SOURCE, ACCOUNT)
     book = context.get_account_book(SOURCE, ACCOUNT)
     context.log.warning("[account capital] (avail){} (margin){} ".format(book.asset.avail, book.asset.margin))
 
-context.static_data
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**静态数据信息**
+.. _book对象:
+
+使用方法
+++++++++++++++++++++++
+
+.. list-table::
+   :width: 600px
+
+   * - 属性
+     - 类型
+     - 说明
+   * - asset
+     - :ref:`asset <asset对象>`
+     - 投资组合资金信息
+   * - commissions
+     - :ref:`Commission <Commission对象>`
+     - 获取佣金信息
+   * - instruments
+     - :ref:`Instrument <Instrument对象>`
+     - 获取当日可交易标的信息
+   * - instrument_factors
+     - :ref:`InstrumentFactor <InstrumentFactor对象>`
+     - 获取账户保证金信息
+   * - long_positions
+     - :ref:`Position <Position对象>`
+     - 投资组合的持仓列表，对应多头仓位
+   * - short_positions
+     - :ref:`Position <Position对象>`
+     - 投资组合的持仓列表，对应空头仓位
+   * - orders
+     - :ref:`Order <Order对象>`
+     - 获取订单委托信息
+   * - trades
+     - :ref:`Trade <Trade对象>`
+     - 获取订单成交信息
+   * - order_inputs
+     - :ref:`OrderInput <OrderInput对象>`
+     - 获取订单输出信息
+   * - has_long_position
+     - bool
+     - 判断是否为多头仓位
+   * - has_short_position
+     - bool
+     - 判断是否为空头仓位
+   * - get_long_position
+     - dict
+     - 多头持仓信息
+   * - get_short_position
+     - dict
+     - 空头持仓信息
+
+注意 ::
+
+   1. 对于 context.book 来说
+
+      1). orders  是获取跟该策略本身相关的所有委托，这个“所有委托”，包含了不同账户的委托信息
+
+      2). trades  是获取跟该策略本身相关的所有成交，这个“所有成交”，包含了不同账户的成交信息
+
+      3). order_inputs  是获取该策略本次的所有订单输出，这个“所有订单输出”，包含了不同账户的订单输出信息
+
+   2. 对于 context.get_account_book(source, account) 来说
+
+      1). orders  是获取目标账户的所有委托信息
+
+      2). trades  是获取目标账户的所有成交信息
+
+      3). order_inputs  是获取目标账户在本次策略中的订单输出信息
+
+获取投资组合持仓列表范例::
+
+    def post_start(context):
+        context.log.warning("post_start")
+
+        context.account_book = context.get_account_book(SOURCE, ACCOUNT)
+
+        book = context.book
+
+        context.log.warning("资金组合信息 {}".format(context.account_book.asset))
+
+        # 账户中多头持仓数据
+        long_position = context.account_book.long_positions
+        for key in long_position:
+            pos = long_position[key]
+            context.log.info("多头持仓数据 (instrument_id){} (volume){} (yesterday_volume){} ".format(pos.instrument_id,pos.volume,pos.yesterday_volume))
+
+        # 账户中空头持仓数据
+        short_position = context.account_book.short_positions
+        for key in short_position:
+            pos = short_position[key]
+            context.log.info("空头持仓数据 (instrument_id){} (volume){} (yesterday_volume){} ".format(pos.instrument_id,pos.volume,pos.yesterday_volume))
+
+        # 获取佣金信息
+        commission = context.account_book.commissions
+        for key in commission:
+            pos = commission[key]
+            context.log.info(
+                "佣金信息 product_id {}，exchange_id {} ,open_ratio {}  ".format(pos.product_id, pos.exchange_id,
+                                                                                pos.open_ratio))
+
+        # 获取当日可交易标的信息
+        instrument = context.account_book.instruments
+        for key in instrument:
+            pos = instrument[key]
+            context.log.info(
+                "当日可交易标的信息 instrument_id {} , exchange_id {}".format(pos.instrument_id, pos.exchange_id))
+
+        # 获取账户保证金信息
+        instrument_factor = context.account_book.instrument_factors
+        for key in instrument_factor:
+            pos = instrument_factor[key]
+            context.log.info(
+                "获取账户保证金信息  {} ".format(pos))
+
+        # 获取策略所有委托信息
+        book_order = book.orders
+        for key in book_order:
+            pos = book_order[key]
+            context.log.info("book orders order_id {} ".format(pos.order_id))
+
+        # 获取策略所有成交信息
+        book_trade = book.trades
+        for key in book_trade:
+            pos = book_trade[key]
+            context.log.info("book trades trade_id {} ".format(pos.trade_id))
+
+        # 获取策略本次订单输出信息
+        book_order_input = book.order_inputs
+        for key in book_order_input:
+            pos = book_order_input[key]
+            context.log.info("book order_inputs order_id {} ".format(pos.order_id))
+
+        # 获取账户所有委托信息
+        account_order = context.account_book.orders
+        for key in account_order:
+            pos = account_order[key]
+            context.log.info("account orders order_id {} ".format(pos.order_id))
+
+        # 获取账户所有成交信息
+        account_trade = context.account_book.trades
+        for key in account_trade:
+            pos = account_trade[key]
+            context.log.info("account trades trade_id {} ".format(pos.trade_id))
+
+        # 获取账户在本次策略中的订单输出信息
+        account_order_input = context.account_book.order_inputs
+        for key in account_order_input:
+            pos = account_order_input[key]
+            context.log.info("account order_inputs order_id {} ".format(pos.order_id))
+
+        # 判断是否为多头仓位
+        context.log.warning("判断是否为多头仓位 {}".format(context.account_book.has_long_position(SOURCE, ACCOUNT,"SSE", "600000")))
+
+        # 判断是否为空头仓位
+        context.log.warning("判断是否为空头仓位 {}".format(context.account_book.has_short_position(SOURCE, ACCOUNT,"SHFE", "ag2212")))
+
+        # 多头标的持仓信息
+        context.log.warning("多头标的持仓信息 {}".format(context.account_book.get_long_position(SOURCE, ACCOUNT,"SSE", "600000")))
+
+        # 空头标的持仓信息
+        context.log.warning("空头标的持仓信息 {}".format(context.account_book.get_short_position(SOURCE, ACCOUNT,"SHFE", "ag2212")))
+
+
+静态数据信息
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+context.static_data
+++++++++++++++++++++++++
+
+**静态数据信息获取**
 
 .. list-table::
    :width: 600px
@@ -1524,6 +1754,172 @@ context.static_data
 
     #获取静态数据
     static_data = context.static_data
+
+
+.. _static_data对象:
+
+使用方法
+++++++++++++++++++++++
+
+.. list-table::
+   :width: 600px
+
+   * - 属性
+     - 类型
+     - 说明
+   * - commissions
+     - :ref:`Commission <Commission对象>`
+     - 获取佣金信息
+   * - instruments
+     - :ref:`Instrument <Instrument对象>`
+     - 获取当日可交易标的信息
+   * - instrument_factors
+     - :ref:`InstrumentFactor <InstrumentFactor对象>`
+     - 获取账户保证金信息
+
+范例::
+
+    # 获取佣金信息
+    static_data_commissions = context.static_data.commissions
+    for key in static_data_commissions:
+        pos = static_data_commissions[key]
+        context.log.info("static_data 当日可交易标的佣金信息  品种 {} , 交易所 {} , 开仓费率 {}".format(pos.product_id, pos.exchange_id, pos.open_ratio))
+
+    # 获取可交易标的信息
+    static_data_instrument = context.static_data.instruments
+    for key in static_data_instrument:
+        pos = static_data_instrument[key]
+        context.log.info(
+            "static_data 当日可交易标的信息 标的 {} , 交易所 {}".format(pos.instrument_id, pos.exchange_id))
+
+    # 获取保证金信息
+    static_data_instrument_factors = context.static_data.instrument_factors
+    for key in static_data_instrument_factors:
+        pos = static_data_instrument_factors[key]
+        context.log.info(
+            "static_data 获取保证金信息  标的 {} , 交易所 {} , 多头保证金率".format(pos.instrument_id, pos.exchange_id, pos.long_margin_ratio))
+
+
+Orderbook 重建订单簿
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+.. note:: **重建订单簿有何用处？** 
+
+   - **1. 市场深度和流动性分析：** 
+   
+   重建订单簿可以展示不同价格水平上愿意买卖的订单数量，直观展示市场深度的。有助于评估市场的流动性，特定价格区间内能够吸收多少交易量而不会引起价格显著变动。了解市场深度对于制定交易策略和评估市场冲击成本至关重要。
+
+  
+   - **2. 价格发现：** 
+  
+   订单簿中的买卖订单反映了市场参与者对未来价格的预期和需求。通过分析订单簿，更好地理解价格形成机制以预测价格走势。
+
+   - **3. 交易执行优化：** 
+   
+   在量化交易中，了解订单簿的状态可以帮助交易算法选择最佳的交易路径和价格，以最小化交易成本。例如，如果订单簿显示买方需求强劲，可考虑以略高于当前市场价格的价格买入，以提高成交概率。
+
+   - **4.  风险管理：** 
+   
+   通过监控订单簿的变化，可以及时发现潜在的市场异常或流动性枯竭情况，从而采取相应的风险控制措施。
+
+
+.. list-table::
+   :width: 600px
+
+   * - 属性
+     - 说明
+   * - get_bids
+     - 获取买单信息
+   * - get_asks
+     - 获取卖单信息
+
+
+
+- **注意**：
+
+   - 只有在行情源提供逐笔行情数据的情况下，才能准确地重建订单簿
+
+   - 将维护从策略开始到策略结束收到的所有逐笔数据
+
+
+::
+  
+  订单簿维护规则详解 ( **只适用于Entrust 逐笔委托** ) : 
+
+  当收到一笔新的逐笔数据时,检测当前数据的price和side 是否被记录过，
+
+    1). 若当前数据的价格档位不存在，则将当前数据的volume增加到对应价格档位的volume中
+
+    2). 若当前数据的价格档位已存在。将根据以下规则更新订单簿 : 
+
+      a. 如果当前数据方向（side）为买, 比较当前price和买1价, 如果小于买1价, 直接存储; 进一步与最低要价（卖1价）比较，若大于卖一价则撮合成交。
+
+      b. 如果当前数据方向（side）为卖, 比较当前price和卖1价, 如果大于买1价, 直接存储; 进一步与最高出价（买1价）比较，若小于买一价则撮合成交。
+
+      c. 如果产生撮合且新数据的volume小于买1/卖1单的volume, 此时买1/卖1单的volume会扣除对应数量; 如果大于买/卖单的volume, 原买1单/卖1单的price档位会被消除 ,然后继续和新的买1价(原买2价)和卖1价(原卖2价)进行判断是否会和当前数据发生撮合,如果继续撮合则重复本条逻辑。如果未发生撮合，就把对应的价格和剩余的volume存到买单或者卖单里。
+     
+      d. 撮合规则 : 新数据为买入方向: 新数据的price >= 卖1价 则触发撮合 ; 新数据为卖出方向: 新数据的price <= 买1价 则触发撮合。
+
+      e. 卖1价 : 当前已存储的卖单信息, 按照价格由低到高排列, 卖1价为当前卖单信息的最低价格
+
+      f. 买1价 : 当前已存储的买单信息, 按照价格由高到低排列, 买1价为当前买单信息的最高价格        
+
+    3). 撤单处理: 
+
+      只有当Transaction的exex_type（成交类型）为Cancel时,买单或卖单才会根据bid_no或者ask_no 减去对应price的volume,  其他类型的Transaction数据不会被处理
+
+
+示例代码↓::
+
+    # 案例示范
+    from pykungfu import wingchun as wc
+
+    def pre_start(context):
+        context.subscribe("xtp", ["600000"], "SSE")
+        context.depth_orderbook = wc.DepthOrderbooks()
+        context.attach_orderbooks(context.depth_orderbook)
+
+    def on_entrust(context, entrust, location, dest):
+        context.log.info('[逐笔委托 entrust] {}'.format(entrust))
+
+        bids = context.depth_orderbook.get_bids("600000", "SSE")
+        for level in bids:
+            context.log.warning('[entrust bids 买单信息]  {}'.format(level))
+
+        asks = context.depth_orderbook.get_asks("600000", "SSE")
+        for level in asks:
+            context.log.warning('[entrust asks 卖单信息]  {}'.format(level))
+            
+    def on_transaction(context, transaction, location, dest):
+        context.log.info('[逐笔成交 on_transaction] {}'.format(transaction))
+
+        bids = context.depth_orderbook.get_bids("600000", "SSE")
+        for level in bids:
+            context.log.warning('[transaction bids 买单信息]  {}'.format(level))
+
+        asks = context.depth_orderbook.get_asks("600000", "SSE")
+        for level in asks:
+            context.log.warning('[transaction asks 卖单信息]  {}'.format(level))
+
+
+.. list-table::
+   :width: 600px
+
+   * - 属性
+     - 类型
+     - 说明
+   * - data_time
+     - int
+     - 数据生成时间(交易所时间)
+   * - price
+     - float
+     - 价格
+   * - volume
+     - int
+     - 数量
+
+
 
 辅助函数
 ~~~~~~~~~~~~~~~~~~~~~
@@ -3130,7 +3526,7 @@ OperatorStateUpdate 订阅的其他算子器状态变化信息
      - 类型
      - 说明
    * - state
-     - OperatorState对象
+     - :ref:`OperatorState <OperatorState对象>`
      - 连接状态
    * - update_time
      - int
@@ -3208,276 +3604,10 @@ BrokerStateUpdate 客户端状态变化回调信息
 
 **注意:功夫时间在最开始会以真实时间对时，然后根据cpu震动++，是个单调递增的时间，和真实时间是有差别的。交易所时间和本机时间也会有差别**
 
-Utils
-~~~~~~~~~~~~~~~~~~~~~
-
-.. list-table::
-   :width: 600px
-
-   * - 属性
-     - 类型
-     - 说明
-   * - hash_instrument
-     - long
-     - 获取账户中某个标的信息对应的key值
-   * - is_valid_price
-     - bool
-     - 判断当前价格是否为有效价格
-   * - is_final_status
-     - bool
-     - 判断当前状态是否为最终状态
-   * - get_instrument_type
-     - :ref:`InstrumentType <InstrumentType对象>`
-     - 获取类型
-
-Utils范例::
-
-    # hash_instrument 案例示范
-    from pykungfu import wingchun as wc
-
-    # 1. 获取某个可交易标的信息对应的key值  wc.utils.hash_instrument(exchange_id, instrument_id)
-    instrument_key = wc.utils.hash_instrument("SHFE", "rb2405")
-    instrument = context.get_account_book(source,account).instruments[instrument_key]
-    context.log.info("instrument {}".format(instrument))
-
-    # 2. 获取某个标的持仓信息对应的key值  wc.utils.hash_instrument(account_uid, exchange_id, instrument_id)
-    account_uid = context.get_account_uid(source, account)
-    position_key = wc.utils.hash_instrument(account_uid, "SHFE", "au2404")
-    position = context.get_account_book(source,account).long_positions[position_key]
-    context.log.info("position {}".format(position))
-
-    # 3. 获取某个标的保证金信息对应的key值   wc.utils.hash_instrument(account_uid, exchange_id, instrument_id)
-    account_uid = context.get_account_uid(source, account)
-    instrument_factor_key = wc.utils.hash_instrument(account_uid, "SHFE", "ag2401")
-    instrument_factor = context.get_account_book(source,account).instrument_factors[instrument_factor_key]
-    context.log.info("instrument_factor {}".format(instrument_factor))
-
-    # 其他案例示范
-    def on_quote(context, quote, location):
-        is_valid_price = wc.utils.is_valid_price(quote.last_price)
-        context.log.warning("当前价格是否为有效价格 {}".format(is_valid_price))
-
-
-    def on_order(context, order, location):
-        is_valid_status = wc.utils.is_final_status(order.status)
-        context.log.warning("当前状态是否为最终状态 {}".format(is_valid_status))
-
-
-    def post_start(context):
-        ticker_instrument_type = wc.utils.get_instrument_type("SSE", "600000")
-        context.log.warning("标的的合约类型是 {}".format(ticker_instrument_type))
-
-
-.. _book对象:
-
-Book 投资组合
-~~~~~~~~~~~~~~~~~~~~~
-
-.. list-table::
-   :width: 600px
-
-   * - 属性
-     - 类型
-     - 说明
-   * - asset
-     - :ref:`asset <asset对象>`
-     - 投资组合资金信息
-   * - commissions
-     - :ref:`Commission <Commission对象>`
-     - 获取佣金信息
-   * - instruments
-     - :ref:`Instrument <Instrument对象>`
-     - 获取当日可交易标的信息
-   * - instrument_factors
-     - :ref:`InstrumentFactor <InstrumentFactor对象>`
-     - 获取账户保证金信息
-   * - long_positions
-     - :ref:`Position <Position对象>`
-     - 投资组合的持仓列表，对应多头仓位
-   * - short_positions
-     - :ref:`Position <Position对象>`
-     - 投资组合的持仓列表，对应空头仓位
-   * - orders
-     - :ref:`Order <Order对象>`
-     - 获取订单委托信息
-   * - trades
-     - :ref:`Trade <Trade对象>`
-     - 获取订单成交信息
-   * - order_inputs
-     - :ref:`OrderInput <OrderInput对象>`
-     - 获取订单输出信息
-   * - has_long_position
-     - bool
-     - 判断是否为多头仓位
-   * - has_short_position
-     - bool
-     - 判断是否为空头仓位
-   * - get_long_position
-     - dict
-     - 多头持仓信息
-   * - get_short_position
-     - dict
-     - 空头持仓信息
-
-注意 ::
-
-   1. 对于 context.book 来说
-
-      1). orders  是获取跟该策略本身相关的所有委托，这个“所有委托”，包含了不同账户的委托信息
-
-      2). trades  是获取跟该策略本身相关的所有成交，这个“所有成交”，包含了不同账户的成交信息
-
-      3). order_inputs  是获取该策略本次的所有订单输出，这个“所有订单输出”，包含了不同账户的订单输出信息
-
-   2. 对于 context.get_account_book(source, account) 来说
-
-      1). orders  是获取目标账户的所有委托信息
-
-      2). trades  是获取目标账户的所有成交信息
-
-      3). order_inputs  是获取目标账户在本次策略中的订单输出信息
-
-获取投资组合持仓列表范例::
-
-    def post_start(context):
-        context.log.warning("post_start")
-
-        context.account_book = context.get_account_book(SOURCE, ACCOUNT)
-
-        book = context.book
-
-        context.log.warning("资金组合信息 {}".format(context.account_book.asset))
-
-        # 账户中多头持仓数据
-        long_position = context.account_book.long_positions
-        for key in long_position:
-            pos = long_position[key]
-            context.log.info("多头持仓数据 (instrument_id){} (volume){} (yesterday_volume){} ".format(pos.instrument_id,pos.volume,pos.yesterday_volume))
-
-        # 账户中空头持仓数据
-        short_position = context.account_book.short_positions
-        for key in short_position:
-            pos = short_position[key]
-            context.log.info("空头持仓数据 (instrument_id){} (volume){} (yesterday_volume){} ".format(pos.instrument_id,pos.volume,pos.yesterday_volume))
-
-        # 获取佣金信息
-        commission = context.account_book.commissions
-        for key in commission:
-            pos = commission[key]
-            context.log.info(
-                "佣金信息 product_id {}，exchange_id {} ,open_ratio {}  ".format(pos.product_id, pos.exchange_id,
-                                                                                pos.open_ratio))
-
-        # 获取当日可交易标的信息
-        instrument = context.account_book.instruments
-        for key in instrument:
-            pos = instrument[key]
-            context.log.info(
-                "当日可交易标的信息 instrument_id {} , exchange_id {}".format(pos.instrument_id, pos.exchange_id))
-
-        # 获取当日可交易标的信息
-        instrument_factor = context.account_book.instrument_factors
-        for key in instrument_factor:
-            pos = instrument_factor[key]
-            context.log.info(
-                "获取账户保证金信息  {} ".format(pos))
-
-        # 获取策略所有委托信息
-        book_order = book.orders
-        for key in book_order:
-            pos = book_order[key]
-            context.log.info("book orders order_id {} ".format(pos.order_id))
-
-        # 获取策略所有成交信息
-        book_trade = book.trades
-        for key in book_trade:
-            pos = book_trade[key]
-            context.log.info("book trades trade_id {} ".format(pos.trade_id))
-
-        # 获取策略本次订单输出信息
-        book_order_input = book.order_inputs
-        for key in book_order_input:
-            pos = book_order_input[key]
-            context.log.info("book order_inputs order_id {} ".format(pos.order_id))
-
-        # 获取账户所有委托信息
-        account_order = context.account_book.orders
-        for key in account_order:
-            pos = account_order[key]
-            context.log.info("account orders order_id {} ".format(pos.order_id))
-
-        # 获取账户所有成交信息
-        account_trade = context.account_book.trades
-        for key in account_trade:
-            pos = account_trade[key]
-            context.log.info("account trades trade_id {} ".format(pos.trade_id))
-
-        # 获取账户在本次策略中的订单输出信息
-        account_order_input = context.account_book.order_inputs
-        for key in account_order_input:
-            pos = account_order_input[key]
-            context.log.info("account order_inputs order_id {} ".format(pos.order_id))
-
-        # 判断是否为多头仓位
-        context.log.warning("判断是否为多头仓位 {}".format(context.account_book.has_long_position(SOURCE, ACCOUNT,"SSE", "600000")))
-
-        # 判断是否为空头仓位
-        context.log.warning("判断是否为空头仓位 {}".format(context.account_book.has_short_position(SOURCE, ACCOUNT,"SHFE", "ag2212")))
-
-        # 多头标的持仓信息
-        context.log.warning("多头标的持仓信息 {}".format(context.account_book.get_long_position(SOURCE, ACCOUNT,"SSE", "600000")))
-
-        # 空头标的持仓信息
-        context.log.warning("空头标的持仓信息 {}".format(context.account_book.get_short_position(SOURCE, ACCOUNT,"SHFE", "ag2212")))
-
-.. _static_data对象:
-
-static_data 静态数据
-~~~~~~~~~~~~~~~~~~~~~~~
-
-.. list-table::
-   :width: 600px
-
-   * - 属性
-     - 类型
-     - 说明
-   * - commissions
-     - :ref:`Commission <Commission对象>`
-     - 获取佣金信息
-   * - instruments
-     - :ref:`Instrument <Instrument对象>`
-     - 获取当日可交易标的信息
-   * - instrument_factors
-     - :ref:`InstrumentFactor <InstrumentFactor对象>`
-     - 获取账户保证金信息
-
-范例::
-
-    # 获取佣金信息
-    static_data_commissions = context.static_data.commissions
-    for key in static_data_commissions:
-        pos = static_data_commissions[key]
-        context.log.info("static_data 当日可交易标的佣金信息  品种 {} , 交易所 {} , 开仓费率 {}".format(pos.product_id, pos.exchange_id, pos.open_ratio))
-
-    # 获取可交易标的信息
-    static_data_instrument = context.static_data.instruments
-    for key in static_data_instrument:
-        pos = static_data_instrument[key]
-        context.log.info(
-            "static_data 当日可交易标的信息 标的 {} , 交易所 {}".format(pos.instrument_id, pos.exchange_id))
-
-    # 获取保证金信息
-    static_data_instrument_factors = context.static_data.instrument_factors
-    for key in static_data_instrument_factors:
-        pos = static_data_instrument_factors[key]
-        context.log.info(
-            "static_data 获取保证金信息  标的 {} , 交易所 {} , 多头保证金率".format(pos.instrument_id, pos.exchange_id, pos.long_margin_ratio))
-
-
 .. _asset对象:
 
-Book.asset 投资组合资金信息
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+asset 资金信息
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
    :width: 600px
@@ -3609,7 +3739,7 @@ Book.asset 投资组合资金信息
 .. _Commission对象:
 
 Commission 佣金信息
-^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
    :width: 600px
@@ -3640,12 +3770,12 @@ Commission 佣金信息
      - 平仓费率
    * - min_commission
      - float
-     - 平仓费率
+     - 最小手续费
 
 .. _Instrument对象:
 
 Instrument 当日可交易标的信息
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
    :width: 600px
@@ -3663,7 +3793,7 @@ Instrument 当日可交易标的信息
      - :ref:`InstrumentType <InstrumentType对象>`
      - 合约类型
    * - product_id
-     - list of float
+     - int
      - 产品ID (品种)
    * - contract_multiplier
      - int
@@ -3671,6 +3801,9 @@ Instrument 当日可交易标的信息
    * - price_tick
      - float
      - 最小变动价位
+   * - quantity_unit
+     - float
+     - 最小数量单位
    * - open_date
      - str
      - 上市日
@@ -3687,13 +3820,13 @@ Instrument 当日可交易标的信息
      - int
      - 交割月
    * - currency
-     - Currency对象
+     - :ref:`Currency <Currency对象>`
      - 币种
 
 .. _InstrumentFactor对象:
 
 InstrumentFactor 账户保证金信息
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
    :width: 600px
@@ -3711,7 +3844,7 @@ InstrumentFactor 账户保证金信息
      - :ref:`InstrumentType <InstrumentType对象>`
      - 合约类型
    * - product_id
-     - list of float
+     - int
      - 产品ID (品种)
    * - source_id
      - int
@@ -3899,18 +4032,21 @@ Position 持仓信息
 
 **注意 : 对于T+0标的，当前可交易数量为volume总持仓量；对于T+1标的，当前可交易数量为yesterday_volume昨仓数量**
 
-
-功夫自带 Python 库
---------------------------------------
+-----
 
 ::
+  
+  - aliyun镜像源配置
 
     name = "aliyun"
     url = "https://mirrors.aliyun.com/pypi/simple"
     default = false
     secondary = true
 
-  [packages]
+::
+
+  - 依赖的第三方库及其版本
+
   black = "~22.3.0"
   nuitka = "~0.9.0"
   pdm = "~1.15.0"
@@ -3927,3 +4063,5 @@ Position 持仓信息
   pytest = "^7.1.0"
   conan = "^1.49.0"
   pyinstaller = "^5.1"
+
+-----
