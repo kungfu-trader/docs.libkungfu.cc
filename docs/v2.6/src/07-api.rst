@@ -191,17 +191,11 @@
      - trading_day
      - t̶r̶a̶d̶i̶n̶g̶_̶d̶a̶y̶
    * - Order 订单回报
-     - trading_day
-     - t̶r̶a̶d̶i̶n̶g̶_̶d̶a̶y̶
+     - 
+     - restore_time
    * - Trade 订单成交
-     - trading_day
-     - t̶r̶a̶d̶i̶n̶g̶_̶d̶a̶y̶ , parent_order_id
-   * - HistoryOrder 历史订单
-     - trading_day
-     - t̶r̶a̶d̶i̶n̶g̶_̶d̶a̶y̶
-   * - HistoryTrade 历史成交
-     - trading_day
-     - t̶r̶a̶d̶i̶n̶g̶_̶d̶a̶y̶
+     - 
+     - restore_time , parent_order_id
    * - Position 持仓信息
      - trading_day
      - t̶r̶a̶d̶i̶n̶g̶_̶d̶a̶y̶ , source_id , source_op_id
@@ -2757,6 +2751,12 @@ Order 订单回报
    * - update_time
      - int
      - 订单更新时间(功夫时间)
+   * - trading_day
+     - int
+     - 交易日
+   * - restore_time
+     - int
+     - 恢复时间(用于重启td后恢复交易数据的时间戳)
    * - instrument_id
      - str
      - 合约ID
@@ -2842,6 +2842,12 @@ Trade 订单成交
    * - trade_time
      - int
      - 成交时间(功夫时间)
+   * - trading_day
+     - int
+     - 交易日
+   * - restore_time
+     - int
+     - 恢复时间(用于重启td后恢复交易数据的时间戳)
    * - instrument_id
      - str
      - 合约ID
@@ -2903,6 +2909,9 @@ HistoryOrder 历史订单
    * - update_time
      - long
      - 订单更新时间(功夫时间)
+   * - trading_day
+     - int
+     - 交易日
    * - instrument_id
      - str
      - 合约ID
@@ -2991,6 +3000,9 @@ HistoryTrade 历史成交
    * - trade_time
      - long
      - 成交时间(功夫时间)
+   * - trading_day
+     - int
+     - 交易日
    * - instrument_id
      - str
      - 合约ID
@@ -3347,12 +3359,12 @@ Utils范例::
     context.log.info("instrument_factor {}".format(instrument_factor))
 
     # 其他案例示范
-    def on_quote(context, quote, location, dest):
+    def on_quote(context, quote, location,dest):
         is_valid_price = wc.utils.is_valid_price(quote.last_price)
         context.log.warning("当前价格是否为有效价格 {}".format(is_valid_price))
 
 
-    def on_order(context, order, location, dest):
+    def on_order(context, order, location,dest):
         is_valid_status = wc.utils.is_final_status(order.status)
         context.log.warning("当前状态是否为最终状态 {}".format(is_valid_status))
 
@@ -3984,18 +3996,24 @@ Position 持仓信息
 
 **注意 : 对于T+0标的，当前可交易数量为volume总持仓量；对于T+1标的，当前可交易数量为yesterday_volume昨仓数量**
 
+-----
 
-功夫自带 Python 库
+内置Python第三方库依赖清单
 --------------------------------------
 
 ::
+  
+  - aliyun镜像源配置
 
     name = "aliyun"
     url = "https://mirrors.aliyun.com/pypi/simple"
     default = false
     secondary = true
 
-  [packages]
+::
+
+  - 依赖的第三方库及其版本
+
   black = "~22.3.0"
   nuitka = "~0.9.0"
   pdm = "~1.15.0"
@@ -4012,3 +4030,6 @@ Position 持仓信息
   pytest = "^7.1.0"
   conan = "^1.49.0"
   pyinstaller = "^5.1"
+
+
+-----

@@ -3050,6 +3050,12 @@ Order 订单回报
    * - update_time
      - int
      - 订单更新时间(功夫时间)
+   * - trading_day
+     - int
+     - 交易日
+   * - restore_time
+     - int
+     - 恢复时间(用于重启td后恢复交易数据的时间戳)
    * - instrument_id
      - str
      - 合约ID
@@ -3141,6 +3147,12 @@ Trade 订单成交
    * - trade_time
      - int
      - 成交时间(功夫时间)
+   * - trading_day
+     - int
+     - 交易日
+   * - restore_time
+     - int
+     - 恢复时间(用于重启td后恢复交易数据的时间戳)
    * - instrument_id
      - str
      - 合约ID
@@ -3196,6 +3208,9 @@ HistoryOrder 历史订单
    * - update_time
      - long
      - 订单更新时间(功夫时间)
+   * - trading_day
+     - int
+     - 交易日
    * - instrument_id
      - str
      - 合约ID
@@ -3287,6 +3302,9 @@ HistoryTrade 历史成交
    * - trade_time
      - long
      - 成交时间(功夫时间)
+   * - trading_day
+     - int
+     - 交易日
    * - instrument_id
      - str
      - 合约ID
