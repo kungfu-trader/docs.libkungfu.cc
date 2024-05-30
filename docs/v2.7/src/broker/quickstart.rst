@@ -56,8 +56,8 @@
             "host": "https://prebuilt.libkungfu.cc"
         },
         "scripts": {
-            "build": "C:/Users/PC/Documents/kfgit/v27/kf27/artifact/build/stage/artifact-kungfu/v2/v2.7.5-alpha.6/win-unpacked/resources/kfc/kfs.exe extension build",
-            "clean": "C:/Users/PC/Documents/kfgit/v27/kf27/artifact/build/stage/artifact-kungfu/v2/v2.7.5-alpha.6/win-unpacked/resources/kfc/kfs.exe extension clean",
+            "build": "C:/Users/PC/Documents/kfgit/v27/kf27/artifact/build/stage/artifact-kungfu/v2/v2.7.5-alpha.6/win-unpacked/resources/kfc/kfs.exe extension build", // 替换成你的Kungfu安装目录
+            "clean": "C:/Users/PC/Documents/kfgit/v27/kf27/artifact/build/stage/artifact-kungfu/v2/v2.7.5-alpha.6/win-unpacked/resources/kfc/kfs.exe extension clean", // 替换成你的Kungfu安装目录
             "format": "node ../../framework/core/.gyp/run-format-cpp.js src",
             "install": "node -e \"require('@kungfu-trader/kungfu-core').prebuilt('install')\"",
             "package": "kfs extension package"
@@ -2437,3 +2437,76 @@ xtp柜台和行情源绑定到python模块
 
 编译指令
 ^^^^^^^^^^^^^^^^
+
+
+.. code-block:: shell
+    :linenos:  
+
+    # 在packge.json所在的目录执行
+    yarn build
+
+
+
+编译后目录结构::
+
+    xtp/                                        # xtp柜台名称
+    ├── src/
+    │   └── cpp
+    │       ├── buffer_data.h
+    │       ├── exports.cpp
+    │       ├── marketdata_xtp.cpp
+    │       ├── marketdata_xtp.h
+    │       ├── serialize_xtp.h
+    │       ├── trader_xtp.cpp
+    │       ├── trader_xtp.h
+    │       └── type_convert.h
+    └── package.json                            # 编译配置信息
+    --------以下为编译后自动生成内容------------------------------------
+    ├── __kungfulibs__                          # 根据package.json的kungfuDependencies下载
+    │   └── xtp                                 # 柜台名
+    │       └── v2.2.37.4                       # 柜台API版本
+    │           ├── doc                         # 柜台文档
+    │           ├── include                     # 柜台头文件
+    │           └── lib                         # 柜台库文件
+    ├── CMakeLists.txt                          # 根据package.json自动生成
+    ├── build                                   # 编译中间目录
+    └── dist                                    # 编译结果
+        └── xtp           
+
+.. note::
+    如果是已经添加到Kungfu柜台仓库的柜台API版本, 在执行yarn build之后就可以自动从仓库上下载;    
+
+    如果柜台API版本不在Kungfu柜台仓库列表中, 需要手动创建以下目录
+
+
+手动添加自定义的库目录::
+
+    ├── __kungfulibs__                          # kugnfu寻找C++库的目录,                                                
+    │   └── {对接的柜台名字}                     # 柜台名, 需要和package.json中的kungfuDependencies配置的key相同        
+    │       └── {柜台的版本号}                   # 柜台API版本, 需要和package.json中的kungfuDependencies配置的value相同 
+    │           ├── doc                         # 柜台文档                                                              
+    │           ├── include                     # 柜台头文件                                                            
+    │           └── lib                         # 柜台库文件                                                            
+
+
+
+
+
+
+
+--------------------------
+
+
+启动插件
+------------------
+
+将dist目录下xtp整个目录拷贝到  {kungfu安装目录}/resources/app/kungfu-extensions 目录下, 启动Kungfu图形化界面, 在TD和MD的添加界面中, 就可以看到xtp模块
+
+
+--------------------------
+
+
+
+
+
+
