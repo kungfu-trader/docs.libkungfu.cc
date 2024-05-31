@@ -3374,12 +3374,12 @@ Utils范例::
             " 600000 标的总仓{} , 昨仓{}".format(positions[key].volume, positions[key].yesterday_volume))
 
 
-    def on_quote(context, quote, location):
+    def on_quote(context, quote, location, dest):
         is_valid_price = wc.utils.is_valid_price(quote.last_price)
         context.log.warning("当前价格是否为有效价格 {}".format(is_valid_price))
 
 
-    def on_order(context, order, location):
+    def on_order(context, order, location, dest):
         is_valid_status = wc.utils.is_final_status(order.status)
         context.log.warning("当前状态是否为最终状态 {}".format(is_valid_status))
 
