@@ -174,8 +174,8 @@
 -------------
 
 
-主要接口
------------
+主要回调接口
+----------------
 
 insert_order
 ^^^^^^^^^^^^^
@@ -1380,7 +1380,6 @@ req_account
         long nRet = (long)SECITPDK_QueryFundInfo(get_account_id().c_str(), arZjzh);
         if (nRet < 0) // 查询失败
         {
-            // itp_update_broker_state(BrokerState::DisConnected);
             string msg = SECITPDK_GetLastError();
             SPDLOG_ERROR("req_account failed. Msg: {}", gbk2utf8(msg));
             return false;
@@ -2006,6 +2005,847 @@ on_band
 一般场景下不会用到该接口.
 
 
+-------------------------------------------
+
+
+主要主调接口
+-------------------------
+
+
+
+update_broker_state
+^^^^^^^^^^^^^^^^^^^^^^
+
+
+**void update_broker_state(BrokerState state);**
+
+修改TD的状态
+
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+
+    // xtp登录失败后将TD状态设置成LoginFailed
+    void TraderXTP::on_start() {
+        if (config_.client_id < 1 or config_.client_id > 99) {
+            SPDLOG_ERROR("client_id must between 1 and 99");
+        }
+        std::string runtime_folder = get_runtime_folder();
+        SPDLOG_INFO("Connecting XTP account {} with tcp://{}:{}", config_.account_id, config_.td_ip, config_.td_port);
+        api_ = XTP::API::TraderApi::CreateTraderApi(config_.client_id, runtime_folder.c_str());
+        api_->RegisterSpi(this);
+        api_->SubscribePublicTopic(XTP_TERT_QUICK);
+        api_->SetSoftwareVersion("1.1.0");
+        api_->SetSoftwareKey(config_.software_key.c_str());
+        session_id_ = api_->Login(config_.td_ip.c_str(), config_.td_port, config_.account_id.c_str(),
+                                    config_.password.c_str(), XTP_PROTOCOL_TCP);
+        if (session_id_ > 0) {
+            SPDLOG_INFO("Login successfully");
+            req_order_trade();
+        } else {
+            update_broker_state(BrokerState::LoginFailed);
+            SPDLOG_ERROR("Login failed [{}]: {}", api_->GetApiLastError()->error_id, api_->GetApiLastError()->error_msg);
+        }
+    }
+
+    // xtp恢复完委托和成交后将TD状态设置成Ready
+    void TraderXTP::try_ready() {
+        if (BrokerState::Ready == get_state()) {
+            return;
+        }
+
+        SPDLOG_DEBUG("req_order_over_: {}, req_trade_over_: {}", req_order_over_, req_trade_over_);
+        if (disable_recover_ or (req_order_over_ and req_trade_over_)) {
+            update_broker_state(BrokerState::Ready);
+        }
+    }
+
+
+-------------------------------------
+
+
+
+
+get_orders
+^^^^^^^^^^^^^^^^^^^^^^
+
+**const OrderMap &get_orders();**
+
+获取内存里的所有委托Order
+
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+
+    // 在on_recover中根据委托恢复Kungfu的order_id和xtp的委托号映射关系
+    for (auto &pair : get_orders()) {
+        SPDLOG_DEBUG("Order: {}", pair.second.data.to_string());
+        const std::string str_external_order_id = pair.second.data.external_order_id.to_string();
+        if (not str_external_order_id.empty()) {
+        uint64_t order_id = pair.first;
+        uint64_t order_xtp_id = std::stoull(str_external_order_id);
+        map_xtp_to_kf_order_id_.emplace(order_xtp_id, order_id);
+        map_kf_to_xtp_order_id_.emplace(order_id, order_xtp_id);
+        }
+    }
+
+
+-------------------------------------------
+
+get_trades
+^^^^^^^^^^^^^^^^^^^^^^
+
+**const TradeMap &get_trades();**
+
+获取内存里的所有成交Trade
+
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+
+    // 在on_recover中根据成交恢复已处理的成交编号
+    for (auto &pair : get_trades()) {
+        SPDLOG_DEBUG("Trade: {}", pair.second.data.to_string());
+        uint64_t order_xtp_id = std::stoull(pair.second.data.external_order_id);
+        map_xtp_order_id_to_xtp_trader_ids_.try_emplace(order_xtp_id)
+            .first->second.emplace(pair.second.data.external_trade_id.to_string());
+    }    
+
+
+-------------------------------------------
+
+
+get_order_triggers
+^^^^^^^^^^^^^^^^^^^^^^
+
+const OrderTriggerMap &get_order_triggers()
+
+获取内存里的所有预埋单OrderTrigger
+
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+
+    // ctp在on_recover中根据预埋单恢复Kungfu的trigger_id和ctp的预埋单编号映射
+    for (const auto &trigger_pair : get_order_triggers()) {
+        const OrderTrigger &trigger = trigger_pair.second.data;
+        map_trigger_id_to_ParkedOrderID_.insert_or_assign(
+            trigger.trigger_id, std::pair<std::string, bool>{trigger.external_trigger_id,
+                                                            trigger.action_flag == OrderTriggerFlag::TriggerCancel});
+        map_ParkedOrderId_to_trigger_id_.insert_or_assign(trigger.external_trigger_id, trigger.trigger_id);
+        SPDLOG_DEBUG("OrderTrigger: {}", trigger.to_string());
+    }
+
+
+
+-------------------------------------------
+
+
+
+disable_recover
+^^^^^^^^^^^^^^^^^^
+
+**void disable_recover();**
+
+关闭恢复委托和成交, 在pre_start调用改接口后, 重启td之后不再恢复关闭前的委托数据, 并且将处于未完成状态的委托设置成 "丢失" 状态.
+如果不调用该接口, 重启td时, 会自动从journal和db中读取从昨天下午4点开始的到现在的所有委托和成交数据, 恢复到内存中, 
+可以通过get_orders(), get_trades(), get_order_triggers()获取数据
+
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+
+    // xtp在pre_start中根据配置信息设置是否要关闭恢复委托和成交
+    void TraderXTP::pre_start() {
+        config_ = nlohmann::json::parse(get_config());
+        SPDLOG_INFO("config: {}", get_config());
+        if (not config_.recover_order_trade) {
+            disable_recover();
+        }
+    }
+
+
+-------------------------------------------
+
+
+has_writer
+^^^^^^^^^^^^^^^^^
+
+**bool has_writer(uint32_t dest_id) const;**
+
+判断是否存在写给dest的writer
+
+
+
+get_writer
+^^^^^^^^^^^^^^^^^
+
+**writer_ptr get_writer(uint32_t dest_id) const;**
+
+获取写给dest的writer
+
+    
+范例
+
+.. code-block:: cpp
+    :linenos:
+
+    // xtp在处理成交数据时, 根据是否有writer来决定是否可以使用get_writer
+    if (has_writer(order_state.dest)) {
+        auto writer = get_writer(order_state.dest);
+        Trade &trade = writer->open_data<Trade>(now());
+        from_xtp(trade_info, trade);
+        trade.trade_id = writer->current_frame_uid();
+        trade.order_id = kf_order_id;
+        add_traded_volume(trade_info.order_xtp_id, trade.volume);
+        SPDLOG_DEBUG("Trade: {}", trade.to_string());
+        writer->close_data();
+    } else {
+        Trade trade{};
+        from_xtp(trade_info, trade);
+        trade.trade_id = get_public_writer()->current_frame_uid() xor (time::now_in_nano() & 0xFFFFFFFF);
+        trade.order_id = kf_order_id;
+        add_traded_volume(trade_info.order_xtp_id, trade.volume);
+        SPDLOG_DEBUG("Trade: {}", trade.to_string());
+        try_write_to(trade, order_state.dest);
+    }
+
+
+---------------------------------------------------------
+
+
+get_public_writer
+^^^^^^^^^^^^^^^^^^^^^
+
+**writer_ptr &get_public_writer()**
+
+dest为0的writer单独使用一个变量存放, 调用该接口直接返回写入dest为0的writer, 效果等价于get_writer(0), 区别是该接口不涉及stl容器访问, 可以在子线程调用
+
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+    
+    // xtp生成系统外订单时, 将数据写入到PUBLIC的journal
+    auto writer = get_public_writer();
+    auto nano = yijinjing::time::now_in_nano();
+    Order &order = writer->open_data<Order>(now());
+    order.order_id = writer->current_frame_uid();
+    from_xtp(order_info, order);
+    order.insert_time = nsec_from_xtp_timestamp(order_info.insert_time);
+    order.update_time = nano;
+    map_kf_to_xtp_order_id_.emplace(uint64_t(order.order_id), order_info.order_xtp_id);
+    map_xtp_to_kf_order_id_.emplace(order_info.order_xtp_id, uint64_t(order.order_id));
+    SPDLOG_DEBUG("Order: {}", order.to_string());
+    writer->close_data();
+    try_deal_XTPTradeReport(order_info.order_xtp_id);
+
+---------------------------------------------------------
+
+open_data<T>
+^^^^^^^^^^^^^^^^
+
+**template <typename T> std::enable_if_t<size_fixed_v<T>, T &> open_data(int64_t trigger_time = 0);**
+
+该接口是属于writer的接口, 用于生成Order, Trade 等数据使用
+
+
+
+
+close_data
+^^^^^^^^^^^^^
+
+**void close_data(int64_t gen_time = time::now_in_nano());**
+
+该接口是属于writer的接口, 用于在open_data完成数据写入后, 标记写入完成;
+
+open_data和close_data必须配对使用, 同一个writer中间不可以进行嵌套
+
+
+
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+    
+    // xtp生成系统外订单时, 使用open_data和close_data对来生成Order
+    auto writer = get_public_writer();
+    auto nano = yijinjing::time::now_in_nano();
+    Order &order = writer->open_data<Order>(now());
+    order.order_id = writer->current_frame_uid();
+    from_xtp(order_info, order);
+    order.insert_time = nsec_from_xtp_timestamp(order_info.insert_time);
+    order.update_time = nano;
+    map_kf_to_xtp_order_id_.emplace(uint64_t(order.order_id), order_info.order_xtp_id);
+    map_xtp_to_kf_order_id_.emplace(order_info.order_xtp_id, uint64_t(order.order_id));
+    SPDLOG_DEBUG("Order: {}", order.to_string());
+    writer->close_data();
+    try_deal_XTPTradeReport(order_info.order_xtp_id);
+
+
+
+---------------------------------------------------------
+
+data<T>
+^^^^^^^^^^^^^^^^^^^^^
+
+**template <typename T> std::enable_if_t<size_fixed_v<T> or std::is_same_v<T, nlohmann::json>, const T &> data() const;**
+
+**template <typename T> std::enable_if_t<not size_fixed_v<T> and not std::is_same_v<T, nlohmann::json>, const T> data() const;**
+
+
+该接口属于event类, 一般用于在回调接口中, 通过event指针获取数据, 如果数据类型是没有类似于string这样的长度大小固定的, 返回的就是数据的引用;
+
+如果是Register这种有string类型长度未定的, 返回的就是数据的拷贝.
+
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+
+    // insert_order中获取OrderInput
+    const OrderInput &input = event->data<OrderInput>();
+
+    // cancel_order中获取OrderAction
+    const OrderAction &action = event->data<OrderAction>();
+
+---------------------------------------------------------
+
+
+order_from_input
+^^^^^^^^^^^^^^^^^^^^^
+
+**inline void order_from_input(const longfist::types::OrderInput &input, longfist::types::Order &order);**
+
+根据OrderInput生成Order, 主要用于在insert_order时将数据进行转换.
+
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+
+    // 在insert_order中根据OrderInput生成OrderInput
+    Order &order = writer->open_data<Order>(event->gen_time());
+    order_from_input(input, order);
+    order.external_order_id = std::to_string(order_xtp_id).c_str();
+    order.insert_time = nano;
+    order.update_time = nano;
+
+    if (success) {
+        map_kf_to_xtp_order_id_.emplace(uint64_t(input.order_id), order_xtp_id);
+        map_xtp_to_kf_order_id_.emplace(order_xtp_id, uint64_t(input.order_id));
+    } else {
+        auto error_info = api_->GetApiLastError();
+        order.error_id = error_info->error_id;
+        order.error_msg = error_info->error_msg;
+        order.status = OrderStatus::Error;
+    }
+
+    SPDLOG_DEBUG("Order: {}", order.to_string());
+    writer->close_data();
+
+    // 在收到成交推送后写入Trade
+    if (has_writer(order_state.dest)) {
+        auto writer = get_writer(order_state.dest);
+        Trade &trade = writer->open_data<Trade>(now());
+        from_xtp(trade_info, trade);
+        trade.trade_id = writer->current_frame_uid();
+        trade.order_id = kf_order_id;
+        add_traded_volume(trade_info.order_xtp_id, trade.volume);
+        SPDLOG_DEBUG("Trade: {}", trade.to_string());
+        writer->close_data();
+    } else {
+        Trade trade{};
+        from_xtp(trade_info, trade);
+        trade.trade_id = get_public_writer()->current_frame_uid() xor (time::now_in_nano() & 0xFFFFFFFF);
+        trade.order_id = kf_order_id;
+        add_traded_volume(trade_info.order_xtp_id, trade.volume);
+        SPDLOG_DEBUG("Trade: {}", trade.to_string());
+        try_write_to(trade, order_state.dest);
+    }
+
+
+-----------------------------------------------------------
+
+
+write_to
+^^^^^^^^^^^^^^
+
+**template <typename DataType> void write_to(const DataType &data, uint32_t dest_id = yijinjing::data::location::PUBLIC);**
+
+将数据类型为DataType的数据data, 写入到dest为dest_id的journal中, 其效果等价于以下实现
+
+.. code-block:: cpp
+    :linenos:
+    
+    auto writer = get_writer(dest);
+    auto &data_to_write = writer->open_data<DataType>(now());
+    memcpy(&data_to_write, &data, sizeof(DataType));
+    writer->close_data();
+
+.. note::
+    1. 调用get_writer和write_to的前提条件是, 存在写给dest_id的writer, 如果不存在, 则会报错崩溃.
+    #. 与open_data再close_data的区别是, write_to是把已经存在数据拷贝一份到共享内存里, 如果数据已经存在, 不需要从柜台数据进行转换获得, 两种方式执行效率没有区别, 如果数据本身不存在, 需要从柜台API进行转换获取, 使用open_data和close_data可以直接将数据转换到共享内存里, 少一次数据拷贝.
+
+
+---------------------------------------------------------
+
+try_write_to
+^^^^^^^^^^^^^^^^^
+
+**template <typename DataType> void try_write_to(const DataType &data, uint32_t dest_id = yijinjing::data::location::PUBLIC, const std::function<void()> &callback = []() {});**
+
+执行效果类似于write_to, 不同的是两点
+
+1. 写完以后会执行一个callback函数
+#. 如果不存在dest_id的writer, 则会创建该writer之后再进行写入
+
+
+.. code-block:: cpp
+    :linenos:
+
+    // xtp收到委托推送时, 不管是td重启恢复委托后查询, 还是正常交易中收到数据, 使用try_write_to更新Order可以在没有dest的writer时可以写入
+    bool TraderXTP::custom_OnOrderEvent(const XTPOrderInfo &order_info, const XTPRI &error_info, uint64_t session_id) {
+    SPDLOG_DEBUG("XTPOrderInfo: {}", to_string(order_info));
+    SPDLOG_DEBUG("session_id: {}, XTPRI: {}", session_id, to_string(error_info));
+
+    auto order_xtp_id_iter = map_xtp_to_kf_order_id_.find(order_info.order_xtp_id);
+    if (order_xtp_id_iter == map_xtp_to_kf_order_id_.end()) {
+        SPDLOG_WARN("unrecognized order_xtp_id {}@{}", order_info.order_xtp_id, trading_day_);
+        return generate_external_order(order_info);
+    }
+
+    uint64_t kf_order_id = order_xtp_id_iter->second;
+    if (not has_order(kf_order_id)) {
+        return generate_external_order(order_info);
+    }
+
+    auto &order_state = get_order(kf_order_id);
+    if (not is_final_status(order_state.data.status) or order_state.data.status == OrderStatus::Lost) {
+        from_xtp_no_price_type(order_info, order_state.data);
+        order_state.data.update_time = yijinjing::time::now_in_nano();
+        if (error_info.error_id != 0) {
+        order_state.data.error_id = error_info.error_id;
+        order_state.data.error_msg = error_info.error_msg;
+        }
+        try_write_to(order_state.data, order_state.dest);
+        SPDLOG_DEBUG("Order: {}", order_state.data.to_string());
+        try_deal_XTPTradeReport(order_info.order_xtp_id);
+    }
+    return true;
+    }
+
+
+-------------------------------------
+
+
+
+get_thread_writer
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+**writer_ptr &get_thread_writer();**
+
+获取线程私有的writer, 作用是给柜台API回调子线程将获取的数据写入到共享内存里, 让主线程从journal读取后再做业务处理, 可以避免容器加锁问题的同时对数据落地, 方便回放
+
+
+
+open_custom_data<T>
+^^^^^^^^^^^^^^^^^^^^
+**template <typename T> T &open_custom_data(int32_t msg_type, int64_t trigger_time = 0)**
+
+作用于open_data类似, 区别是专门用于写入Kungfu在types.h中定义之外的数据, 同样需要和close_data配对, 同一个writer不能有嵌套
+
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+
+    // xtp子线程中将成交数据写入到共享内存journal里
+    auto &bf_order_info = get_thread_writer()->open_custom_data<BufferXTPOrderInfo>(kXTPOrderInfoType, now());
+    memcpy(&bf_order_info.order_info, order_info, sizeof(XTPOrderInfo));
+    bf_order_info.session_id = session_id;
+    if (error_info != nullptr) {
+        memcpy(&bf_order_info.error_info, error_info, sizeof(XTPRI));
+    } else {
+        memset(&bf_order_info.error_info, 0, sizeof(XTPRI));
+    }
+    SPDLOG_DEBUG("BufferXTPOrderInfo: {}", to_string(bf_order_info));
+    get_thread_writer()->close_data();
+
+
+
+---------------------------------------------------------
+
+
+has_order
+^^^^^^^^^^^^^^^^^^
+
+**bool has_order(uint64_t order_id) const;**
+
+判断是否存在改order_id的委托
+
+
+
+
+get_order
+^^^^^^^^^^^^^^^^^^^^^
+
+
+**state<Order> &get_order(uint64_t order_id);**
+
+根据order_id获取对应的委托, 如果不存在对应的委托会崩溃, 需要先调用has_order判断是否存在该委托
+
+
+is_final_status
+^^^^^^^^^^^^^^^^^^^^^^
+
+**bool is_final_status(const longfist::enums::OrderStatus &status)**
+
+判断委托是否处于最终状态, 一般用于在收到委托推送或者成交推送时, 需要修改Order的成交数量和状态信息, 可能出现乱序推送的情况, 
+导致先处理了最终状态的推送, 再收到中间状态的推送, 当Order已经处于最终状态时, 不再修改Order.
+
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+
+    // xtp收到委托推送, 根据映射获取的order_id判断是否存在该委托, 再获取对应的Order
+    bool TraderXTP::custom_OnOrderEvent(const XTPOrderInfo &order_info, const XTPRI &error_info, uint64_t session_id) {
+        SPDLOG_DEBUG("XTPOrderInfo: {}", to_string(order_info));
+        SPDLOG_DEBUG("session_id: {}, XTPRI: {}", session_id, to_string(error_info));
+
+        auto order_xtp_id_iter = map_xtp_to_kf_order_id_.find(order_info.order_xtp_id);
+        if (order_xtp_id_iter == map_xtp_to_kf_order_id_.end()) {
+            SPDLOG_WARN("unrecognized order_xtp_id {}@{}", order_info.order_xtp_id, trading_day_);
+            return generate_external_order(order_info);
+        }
+
+        uint64_t kf_order_id = order_xtp_id_iter->second;
+        if (not has_order(kf_order_id)) {
+            return generate_external_order(order_info);
+        }
+
+        auto &order_state = get_order(kf_order_id);
+        if (not is_final_status(order_state.data.status) or order_state.data.status == OrderStatus::Lost) {
+            from_xtp_no_price_type(order_info, order_state.data);
+            order_state.data.update_time = yijinjing::time::now_in_nano();
+            if (error_info.error_id != 0) {
+            order_state.data.error_id = error_info.error_id;
+            order_state.data.error_msg = error_info.error_msg;
+            }
+            try_write_to(order_state.data, order_state.dest);
+            SPDLOG_DEBUG("Order: {}", order_state.data.to_string());
+            try_deal_XTPTradeReport(order_info.order_xtp_id);
+        }
+        return true;
+    }
+
+
+-------------------
+
+has_order_action
+^^^^^^^^^^^^^^^^^^^^^
+
+
+**bool has_order_action(uint64_t action_id) const;**
+
+判断是否存在该action_id的撤单操作
+
+
+
+
+get_order_action
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**state<OrderAction> &get_order_action(uint64_t action_id);**
+
+根据action_id获取对应的撤单操作, 如果不存在对应的撤单操作会崩溃, 需要先调用has_order_action判断是否存在该委托
+
+
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+
+    // xtp撤单报错时, 根据撤单时构建的映射关系获取action_id后, 根据action_id判断是否存在对应的撤单操作, 获取撤单操作后生成OrderActionError
+    bool TraderXTP::custom_OnCancelOrderError(const XTPOrderCancelInfo &cancel_info, const XTPRI &error_info,
+                                            uint64_t session_id) {
+    SPDLOG_DEBUG("XTPOrderCancelInfo: {}", to_string(cancel_info));
+    SPDLOG_DEBUG("session_id: {}, XTPRI: {}", session_id, to_string(error_info));
+
+    uint64_t action_id = get_action_id(cancel_info.order_xtp_id);
+    if (not has_order_action(action_id)) {
+        SPDLOG_WARN("has not related OrderAction of {}:{}", cancel_info.order_xtp_id, action_id);
+        return false;
+    }
+
+    auto action_state = get_order_action(action_id);
+    auto order_id = action_state.data.order_id;
+    if (not has_order(order_id)) {
+        SPDLOG_WARN("order_id not in orders_ {}", order_id);
+        return false;
+    }
+
+    auto order_state = get_order(order_id);
+    if (has_writer(order_state.dest)) {
+        OrderActionError &error = get_writer(order_state.dest)->open_data<OrderActionError>(now());
+        error.order_id = order_state.data.order_id; // 订单ID
+        std::string str_external_order_id = std::to_string(cancel_info.order_xtp_id);
+        error.external_order_id = str_external_order_id.c_str();
+        error.order_action_id = action_id;       // 订单操作ID,
+        error.error_id = error_info.error_id;    // 错误ID
+        error.error_msg = error_info.error_msg;  // 错误信息
+        error.insert_time = time::now_in_nano(); // 写入时间
+        SPDLOG_DEBUG("OrderActionError: {}", error.to_string());
+        get_writer(order_state.dest)->close_data();
+    } else {
+        OrderActionError error{};
+        error.order_id = order_state.data.order_id; // 订单ID
+        std::string str_external_order_id = std::to_string(cancel_info.order_xtp_id);
+        error.external_order_id = str_external_order_id.c_str();
+        error.order_action_id = action_id;       // 订单操作ID,
+        error.error_id = error_info.error_id;    // 错误ID
+        error.error_msg = error_info.error_msg;  // 错误信息
+        error.insert_time = time::now_in_nano(); // 写入时间
+        SPDLOG_DEBUG("OrderActionError: {}", error.to_string());
+        try_write_to(error, order_state.dest);
+    }
+    return true;
+    }    
+
+-------------------
+
+
+has_order_trigger
+^^^^^^^^^^^^^^^^^^^^^
+
+**bool has_order_trigger(uint64_t trigger_id) const;**
+
+判断是否存在该trigger_id的预埋单
+
+
+
+
+get_order_trigger
+^^^^^^^^^^^^^^^^^^^^^^^
+
+**state<OrderTrigger> &get_order_trigger(uint64_t trigger_id);**
+
+
+根据trigger_id获取对应的预埋单, 如果不存在对应的预埋单会崩溃, 需要先调用has_order_trigger判断是否存在该预埋单撤
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+
+
+    // ctp预埋单委托下单请求响应, 根据响应信息修改预埋单状态
+    bool TraderCTP::custom_OnRspParkedOrderAction(const CThostFtdcParkedOrderActionField &ParkedOrderAction,
+                                                const CThostFtdcRspInfoField &RspInfo, int nRequestID, bool bIsLast) {
+    SPDLOG_DEBUG("CThostFtdcParkedOrderActionField: {}", to_string(ParkedOrderAction));
+    SPDLOG_DEBUG("CThostFtdcRspInfoField: {}", to_string(RspInfo));
+    SPDLOG_DEBUG("nRequestID: {}, bIsLast: {}", nRequestID, bIsLast);
+
+    auto trigger_id_iter = map_request_id_to_kf_action_id_.find(nRequestID);
+    if (trigger_id_iter == map_request_id_to_kf_action_id_.end()) {
+        SPDLOG_ERROR("CANNOT FIND trigger_id of {} in map_request_id_to_kf_action_id_", nRequestID);
+        return false;
+    }
+
+    auto trigger_id = trigger_id_iter->second;
+    if (not has_order_trigger(trigger_id)) {
+        SPDLOG_ERROR("CANNOT FIND tigger_id {} in triggers_", trigger_id);
+        return false;
+    }
+
+    auto &trigger_state = get_order_trigger(trigger_id);
+    map_trigger_id_to_ParkedOrderID_.insert_or_assign(
+        trigger_id, std::pair<std::string, bool>{ParkedOrderAction.ParkedOrderActionID, true});
+    map_ParkedOrderId_to_trigger_id_.insert_or_assign(ParkedOrderAction.ParkedOrderActionID, trigger_id);
+    trigger_state.data.status = parked_status_to_trigger_status(ParkedOrderAction.Status);
+    strncpy(trigger_state.data.external_trigger_id, ParkedOrderAction.ParkedOrderActionID,
+            strlen(ParkedOrderAction.ParkedOrderActionID));
+    trigger_state.data.error_id = RspInfo.ErrorID;
+    const std::string msg = gbk2utf8(RspInfo.ErrorMsg);
+    strncpy(trigger_state.data.error_msg, msg.c_str(), msg.length());
+    trigger_state.data.update_time = time::now_in_nano();
+
+    if (RspInfo.ErrorID != 0) {
+        trigger_state.data.status = OrderStatus::Error;
+        SPDLOG_ERROR("failed to ReqParkedOrderAction, ErrorId: {} ErrorMsg: {}, parked_order_action: {}", RspInfo.ErrorID,
+                    gbk2utf8(RspInfo.ErrorMsg), to_string(ParkedOrderAction));
+    }
+
+    try_write_to(trigger_state.data, trigger_state.dest);
+    SPDLOG_DEBUG("OrderTrigger: {}", trigger_state.data.to_string());
+
+    return true;
+    }
+
+------------------------------------
+
+
+has_order_trigger_action
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**bool has_order_trigger_action(uint64_t action_id) const;**
+
+判断是否存在该action_id的预埋单操作
+
+
+
+get_order_trigger
+^^^^^^^^^^^^^^^^^^^^^^^
+
+**state<OrderTriggerAction> &get_order_trigger_action(uint64_t action_id);**
+
+
+根据action_id获取对应的预埋单撤单操作, 如果不存在对应的预埋单撤单操作会崩溃, 需要先调用has_order_trigger_action判断是否存在该预埋单撤单操
+
+
+
+
+
+
+---------------------------------------------
+
+
+
+now
+^^^^^^^^
+
+**int64_t now() const;**
+
+触发当前回调函数的journal数据的gen_time;
+
+例如, 当前处于insert_order回调函数, now()的值为OrderInput数据的gen_time; 
+当前处于cancel_order回调函数, now()的值为OrderAction数据的gen_time;
+
+不要在子线程中调用使用该函数, 在子线程中该值无意义.
+
+--------------------------
+
+now_in_nano
+^^^^^^^^^^^^^
+
+**int64_t time::now_in_nano();**
+
+系统的当前实际时间, 与当前处于哪个回调函数无关, 主线程和子线程都用都表示的是当前的实际时间.
+
+---------------------------------------
+
+
+
+add_timer
+^^^^^^^^^^^^^^^
+
+
+int32_t add_timer(int64_t nanotime, const std::function<void(const event_ptr &)> &callback);
+
+添加定时器, 当实际时间到nanotime时, 执行一次callback函数.
+
+返回值是timer_id, 可以根据该值取消该定时器.
+
+
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+
+    // ctp查询资金, 如果失败添加定时器2秒后再查一次, 直到查询成功
+    void TraderCTP::add_timer_req_account(int64_t nano) {
+    add_timer(nano, [&](const auto &event) {
+        CThostFtdcQryTradingAccountField req = {};
+        strcpy(req.BrokerID, config_.broker_id.c_str());
+        strcpy(req.InvestorID, config_.account_id.c_str());
+        SPDLOG_TRACE("CThostFtdcQryTradingAccountField: {}", to_string(req));
+        // std::this_thread::sleep_for(std::chrono::seconds(1));
+        int rtn = api_->ReqQryTradingAccount(&req, get_request_id());
+        SPDLOG_TRACE("ReqQryTradingAccount rtn {}", rtn);
+        if (rtn != 0) {
+        add_timer_req_account(time::now_in_nano() + 2 * time_unit::NANOSECONDS_PER_SECOND);
+        }
+    });
+    }
+
+
+
+-------------------------------------------
+
+
+
+
+add_time_interval
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+int32_t add_time_interval(int64_t nanotime, const std::function<void(const event_ptr &)> &callback);
+
+添加间隔定时器, 从现在开始, 每隔nanotime时间, 执行一次callback函数.
+
+返回值是timer_id, 可以根据该值取消该定时器.
+
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+
+    // ledger模块每隔一分钟, 通知所有TD查询资金和持仓
+    if (sync_asset_) {
+        add_time_interval(time_unit::NANOSECONDS_PER_MINUTE,
+                        [&](const event_ptr &e) { request_asset_sync(e->gen_time()); });
+    }
+    if (sync_position_) {
+        add_time_interval(time_unit::NANOSECONDS_PER_MINUTE,
+                        [&](const event_ptr &e) { request_position_sync(e->gen_time()); });
+    }
+
+
+-------------------------------
+
+
+clear_timer
+^^^^^^^^^^^^^
+
+**void clear_timer(int32_t timer_id);**
+
+根据timer_id取消由add_timer和and_time_interval生成的定时器.
+
+
+---------------------------
+
+
+
+request_deregister
+^^^^^^^^^^^^^^^^^^^^^
+
+**void request_deregister()**
+
+申请停止进程, 调用该函数后, 在执行完当前回调函数后, 进程会停止.
+
+------------------------------------
+
+
+
 
 推送处理
 -------------------
@@ -2062,7 +2902,7 @@ on_band
         const std::string &str_ExchangeID_OrderSysID = make_ExchangeID_OrderSysID(ctp_trade.ExchangeID, ctp_trade.OrderSysID);
         auto ExchangeID_OrderSysID_iter = map_ExchangeID_OrderSysID_to_kf_order_id_.find(str_ExchangeID_OrderSysID);
         if (ExchangeID_OrderSysID_iter == map_ExchangeID_OrderSysID_to_kf_order_id_.end()) {
-            SPDLOG_WARN("CANNOT FIND {} in map_ExchangeID_OrderSysID_to_kf_order_id_, STORE CThostFtdcTradeField IN "
+           SPDLOG_WARN("CANNOT FIND {} in map_ExchangeID_OrderSysID_to_kf_order_id_, STORE CThostFtdcTradeField IN "
                         "map_ExchangeID_OrderSysID_to_CThostFtdcTradeFields_",
                         str_ExchangeID_OrderSysID);
             map_ExchangeID_OrderSysID_to_CThostFtdcTradeFields_.try_emplace(str_ExchangeID_OrderSysID)

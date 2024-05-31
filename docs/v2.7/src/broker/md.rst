@@ -48,8 +48,8 @@
 
 
 
-主要接口
------------
+主要回调接口
+------------------------
 
 
 subscribe
@@ -231,6 +231,209 @@ on_band
 
 
 -----------------------
+
+
+
+主要主调接口
+------------------------
+
+request_band
+^^^^^^^^^^^^^^^^
+
+**uint32_t request_band(const std::string &band_name, uint64_t page_size = 0);**
+
+申请一个band信道, 返回结果为band对应的location_uid, page_size为journal每一页的大小.
+
+
+范例
+
+.. code-block:: cpp
+    :linenos: 
+
+    // xtp行情在pre_start中申请两个大小为256MB的信道, 用于写入逐笔委托和逐笔成交行情
+    void MarketDataXTP::pre_start() {
+        entrust_band_uid_ = request_band("market-data-band-entrust", 256);
+        transaction_band_uid_ = request_band("market-data-band-transaction", 256);
+    }
+
+
+------------------------------------------
+
+
+
+update_broker_state
+^^^^^^^^^^^^^^^^^^^^^^
+
+
+**void update_broker_state(BrokerState state);**
+
+修改TD的状态
+
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+
+    // xtp在行情登录成功后将MD状态设置为Ready
+    void MarketDataXTP::on_start() {
+        MDConfiguration config = nlohmann::json::parse(get_config());
+        if (config.client_id < 1 or config.client_id > 99) {
+            SPDLOG_ERROR("client_id must between 1 and 99");
+        }
+        auto md_ip = config.md_ip.c_str();
+        auto account_id = config.account_id.c_str();
+        auto password = config.password.c_str();
+        auto protocol_type = get_xtp_protocol_type(config.protocol);
+        std::string runtime_folder = get_runtime_folder();
+        SPDLOG_INFO("Connecting XTP MD for {} at {}://{}:{}", account_id, config.protocol, md_ip, config.md_port);
+        api_ =
+            XTP::API::QuoteApi::CreateQuoteApi(config.client_id, runtime_folder.c_str(), XTP_LOG_LEVEL::XTP_LOG_LEVEL_INFO);
+        if (config.protocol == "udp") {
+            api_->SetUDPBufferSize(config.buffer_size);
+        }
+        api_->RegisterSpi(this);
+        if (api_->Login(md_ip, config.md_port, account_id, password, protocol_type) == 0) {
+            update_broker_state(BrokerState::LoggedIn);
+            update_broker_state(BrokerState::Ready);
+            SPDLOG_INFO("login success! (account_id) {}", config.account_id);
+            if (config.query_instruments and not check_if_stored_instruments(time::strfnow("%Y%m%d"))) {
+            api_->QueryAllTickers(XTP_EXCHANGE_SH);
+            api_->QueryAllTickers(XTP_EXCHANGE_SZ);
+            api_->QueryAllTickersFullInfo(XTP_EXCHANGE_SH);
+            api_->QueryAllTickersFullInfo(XTP_EXCHANGE_SZ);
+            }
+        } else {
+            update_broker_state(BrokerState::LoginFailed);
+            SPDLOG_ERROR("failed to login, [{}] {}", api_->GetApiLastError()->error_id, api_->GetApiLastError()->error_msg);
+        }
+    }
+
+
+
+----------------------------------------------------------
+
+
+has_band_writer
+^^^^^^^^^^^^^^^^^^
+
+**bool has_band_writer(uint32_t dest_id) const;**
+
+判断是否有写入到band的writer
+
+
+get_band_writer
+^^^^^^^^^^^^^^^^^^
+
+**yijinjing::journal::writer_ptr get_band_writer(uint32_t dest_id) const;**
+
+获取写入到Bnad的writer
+
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+
+    // 收到逐笔推送时, 判断是否存在写入到Band的writer, 然后获取对应的writer赋值给对应变量, 下次收到行情推送时可以直接使用writer, 减少对map的访问
+    void MarketDataXTP::OnTickByTick(XTPTBT *tbt_data) {
+        if (tbt_data->type == XTP_TBT_ENTRUST) {
+            if (tbt_data->entrust.ord_type == 'D') {
+            if (not transaction_band_writer_) {
+                if (not has_band_writer(transaction_band_uid_)) {
+                SPDLOG_INFO("band writer for market-data-band-transaction not ready");
+                return;
+                }
+                transaction_band_writer_ = get_band_writer(transaction_band_uid_);
+            }
+            Transaction &transaction = transaction_band_writer_->open_data<Transaction>(0);
+            from_xtp(*tbt_data, transaction);
+            transaction_band_writer_->close_data();
+            } else {
+            if (not entrust_band_writer_) {
+                if (not has_band_writer(entrust_band_uid_)) {
+                SPDLOG_INFO("band writer for market-data-band-entrust not ready");
+                return;
+                }
+                entrust_band_writer_ = get_band_writer(entrust_band_uid_);
+            }
+            Entrust &entrust = entrust_band_writer_->open_data<Entrust>(0);
+            from_xtp(*tbt_data, entrust);
+            entrust_band_writer_->close_data();
+            }
+        } else if (tbt_data->type == XTP_TBT_TRADE) {
+            if (not transaction_band_writer_) {
+            if (not has_band_writer(transaction_band_uid_)) {
+                SPDLOG_INFO("band writer for market-data-band-transaction not ready");
+                return;
+            }
+            transaction_band_writer_ = get_band_writer(transaction_band_uid_);
+            }
+            Transaction &transaction = transaction_band_writer_->open_data<Transaction>(0);
+            from_xtp(*tbt_data, transaction);
+            transaction_band_writer_->close_data();
+        }
+    }
+
+
+-----------------------------------------
+
+get_public_writer
+^^^^^^^^^^^^^^^^^^^^^
+
+**writer_ptr &get_public_writer()**
+
+dest为0的writer单独使用一个变量存放, 调用该接口直接返回写入dest为0的writer, 效果等价于get_writer(0), 区别是该接口不涉及stl容器访问, 可以在子线程调用
+
+
+
+open_data<T>
+^^^^^^^^^^^^^^^^
+
+**template <typename T> std::enable_if_t<size_fixed_v<T>, T &> open_data(int64_t trigger_time = 0);**
+
+该接口是属于writer的接口, 用于生成Order, Trade 等数据使用
+
+
+
+
+close_data
+^^^^^^^^^^^^^
+
+**void close_data(int64_t gen_time = time::now_in_nano());**
+
+该接口是属于writer的接口, 用于在open_data完成数据写入后, 标记写入完成;
+
+open_data和close_data必须配对使用, 同一个writer中间不可以进行嵌套
+
+
+
+
+范例
+
+.. code-block:: cpp
+    :linenos:
+
+
+    // xtp在收到快照行情推送时, 将数据转换成Quote写到PUBLIC进行广播
+    void MarketDataXTP::OnQueryAllTickers(XTPQSI *ticker_info, XTPRI *error_info, bool is_last) {
+        if (nullptr != error_info && error_info->error_id != 0) {
+            SPDLOG_ERROR("error_id : {} , error_msg : {}", error_info->error_id, error_info->error_msg);
+            return;
+        }
+
+        if (nullptr == ticker_info) {
+            SPDLOG_ERROR("ticker_info is nullptr");
+            return;
+        }
+
+        Instrument &instrument = get_public_writer()->open_data<Instrument>(0);
+        from_xtp(ticker_info, instrument);
+        get_public_writer()->close_data();
+    }
+
+
+----------------------------------------------------
 
 
 行情推送处理
