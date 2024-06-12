@@ -7,13 +7,12 @@
    :caption: 目录
 
    01-intro.rst
-   02-tradingtask.rst
-   03-kfs.rst
-   04-example.rst
+   07-development.rst
+   02-quickstart.rst
+   03-kfs.rst   
    05-api.rst
    06-configuration_information.rst
    09-broker.rst
-   07-development.rst
    08-changelog.rst
    
 

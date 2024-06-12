@@ -38,7 +38,7 @@ package.json文件
             "name": "Kungfu Trader",
             "email": "info@kungfu.link"
         },
-        "version": "2.7.5-alpha.6",
+        "version": "3.0.6-alpha.4",
         "description": "Kungfu Extension - XTP Demo",
         "license": "Apache-2.0",
         "main": "package.json",
@@ -56,17 +56,17 @@ package.json文件
             "host": "https://prebuilt.libkungfu.cc"
         },
         "scripts": {
-            "build": "C:/Users/PC/Documents/kfgit/v27/kf27/artifact/build/stage/artifact-kungfu/v2/v2.7.5-alpha.6/win-unpacked/resources/kfc/kfs.exe extension build", // 替换成你的Kungfu安装目录
-            "clean": "C:/Users/PC/Documents/kfgit/v27/kf27/artifact/build/stage/artifact-kungfu/v2/v2.7.5-alpha.6/win-unpacked/resources/kfc/kfs.exe extension clean", // 替换成你的Kungfu安装目录
+            "build": "C:/Users/PC/Documents/kfgit/v27/kf27/artifact/build/stage/artifact-kungfu/v2/v3.0.6-alpha.4/win-unpacked/resources/kfc/kfs.exe extension build", // 替换成你的Kungfu安装目录
+            "clean": "C:/Users/PC/Documents/kfgit/v27/kf27/artifact/build/stage/artifact-kungfu/v2/v3.0.6-alpha.4/win-unpacked/resources/kfc/kfs.exe extension clean", // 替换成你的Kungfu安装目录
             "format": "node ../../framework/core/.gyp/run-format-cpp.js src",
             "install": "node -e \"require('@kungfu-trader/kungfu-core').prebuilt('install')\"",
             "package": "kfs extension package"
         },
         "dependencies": {
-            "@kungfu-trader/kungfu-core": "^2.7.5-alpha.6"
+            "@kungfu-trader/kungfu-core": "^3.0.6-alpha.4"
         },
         "devDependencies": {
-            "@kungfu-trader/kungfu-sdk": "^2.7.5-alpha.6"
+            "@kungfu-trader/kungfu-sdk": "^3.0.6-alpha.4"
         },
         "kungfuDependencies": {
             "xtp": "v2.2.37.4"
