@@ -393,7 +393,7 @@ package.json::
 .. Python交易任务范例
 .. ^^^^^^^^^^^^^^^^^^^^^^
 
-.. 源码目录结构::
+.. 源码目录结构 (::)
 
 ..     kfx-task-condition-demo/
 ..     ├── src/
@@ -405,7 +405,7 @@ package.json::
 
 
 
-.. 编译后文件目录结构::
+.. 编译后文件目录结构 (::)
 
 ..     kfx-task-condition-demo/
 ..     ├── src/

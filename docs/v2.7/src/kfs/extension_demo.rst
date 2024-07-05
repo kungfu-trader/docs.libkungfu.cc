@@ -393,7 +393,7 @@ package.json::
 .. Python交易任务范例
 .. ^^^^^^^^^^^^^^^^^^^^^^
 
-.. 源码目录结构::
+.. 源码目录结构 (::)
 
 ..     kfx-task-condition-demo/
 ..     ├── src/
@@ -405,7 +405,7 @@ package.json::
 
 
 
-.. 编译后文件目录结构::
+.. 编译后文件目录结构 (::)
 
 ..     kfx-task-condition-demo/
 ..     ├── src/
@@ -979,7 +979,7 @@ package.json::
 
 .. 将dist目录下的xtp目录拷贝到以下目录, 
 
-.. ::
+.. :*2
 
 ..     Windows: {kungfu安装目录}/resources/resources/app/kungfu-extensions/xtp
 
