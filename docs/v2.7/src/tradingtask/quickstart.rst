@@ -1,7 +1,3 @@
-==============
-快速开始
-==============
-
 
 交易任务
 =============
@@ -546,13 +542,13 @@
 
 .. attention:: 
 
-   - 执行编译的kfs命令路径为功夫的安装目录下 /Kungfu/resources/kfc/kfs
+    - 执行编译的kfs命令路径为功夫的安装目录下 /Kungfu/resources/kfc/kfs
 
     - 举例: Windows系统下，功夫安装路径为D盘的根目录,即功夫安装目录为 D:/Kungfu
-     - 编译命令为 : D:/Kungfu/resources/kfc/kfs.exe extension build
+    - 编译命令为 : D:/Kungfu/resources/kfc/kfs.exe extension build
 
     - 举例: linux系统下，功夫安装路径为/opt/Kungfu
-     - 编译命令为 : /opt/Kungfu/resources/kfc/kfs extension build
+    - 编译命令为 : /opt/Kungfu/resources/kfc/kfs extension build
 
 
 编译后文件目录结构::
