@@ -15,6 +15,7 @@
    10-api-c++.rst
    06-configuration_information.rst
    11-broker.rst
+   12-encryption-packaging.rst
    08-changelog.rst
    
 

@@ -1,9 +1,11 @@
 策略加密打包
 -----------------
 
-**注意 : 如果在相同环境下的两台机器上面,一台加密打包,一台运行.那么需要将加密打包后的策略文件整体复制粘贴到运行的机器上面去,然后添加可执行文件,运行策略.**
+.. 注意::
 
-比如 : 两台linux环境机器A和B. 在A机器上面加密打包策略文件 : strategy-cpp , 打包出来的可执行的.so文件是在/dist/文件夹下面,但是如果想要在机器B中运行 机器A打包出来的可执行的.so文件,需要将 打包加密后的策略文件 strategy-cpp 整体复制到机器B中,然后执行添加策略
+ - 如果在相同环境下的两台机器上面,一台加密打包,一台运行.那么需要将加密打包后的策略文件整体复制粘贴到运行的机器上面去,然后添加可执行文件,运行策略
+
+  - 比如 : 两台linux环境机器A和B. 在A机器上面加密打包策略文件 : strategy-cpp , 打包出来的可执行的.so文件是在/dist/文件夹下面,但是如果想要在机器B中运行 机器A打包出来的可执行的.so文件,需要将 打包加密后的策略文件 strategy-cpp 整体复制到机器B中,然后执行添加策略
 
 
 Windows下加密打包
@@ -54,33 +56,6 @@ Windows下加密打包
         .. image:: _images/x64native.png
            :width: 800px
            :height: 1500px
-
-
-.. 注意::
-
- - 对于2.4版本 (Kungfu-1.0.x-win-x64-latest.exe)、2.5版本(Kungfu-1.1.x-win-x64-latest.exe)，安装visual studio community 2022后可以直接进行策略的加密打包操作。
-
-
- - 对于2.6版本(Kungfu-2.6.x-alpha.0-win-x64-alpha.exe)、2.7版本(Kungfu-2.7.x-alpha.0-win-x64-alpha.exe)，需要先更新 visual studio 版本，在进行策略的加密打包操作 (更新操作如下)。
-
-  - 搜索visual studio installer
-
-         .. image:: _images/搜索vs.png
-            :width: 600px
-            :height: 400px
-
-  - 打开visual studio installer , 点击更新按钮
-
-         .. image:: _images/更新vs.png
-            :width: 600px
-            :height: 400px
-
-  - 更新完毕 
-
-         .. image:: _images/更新完成vs.png
-            :width: 600px
-            :height: 400px
-
 
 
 

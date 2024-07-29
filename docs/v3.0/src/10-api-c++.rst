@@ -10,9 +10,19 @@ c++策略API文档
 功夫系统上的策略在策略连接行情交易柜台，发送订阅请求以后，通过以下回调函数给用户发送消息，
 用户在不同的回调函数中调用功能函数实现获取行情，下单，时间回调等逻辑。详细数据定义和接口函数定义可查看后文，以下为一个策略示例
 
-**注意 ： c++策略需要先进行加密打包才可以一添加策略的方式运行**
-**注意 ： 策略应和功夫安装目录在一个盘符下面，策略文件路径最好不要有空格**
-**注意 : 在运行策略之前一定要看下启动的账户柜台进程(td)和行情源柜台进程(md)是否与策略中填写的柜台ID一致**
+
+.. attention::
+
+   - c++策略需要先进行加密打包, 在添加到策略面板运行, 具体方法详见 : 
+
+      .. raw:: html
+
+        <a href="https://docs.libkungfu.cc/latest/12-encryption-packaging.html" target="_blank">策略加密打包</a>
+
+   - 策略应和功夫安装目录在一个盘符下面，策略文件路径最好不要有空格
+
+   - 在运行策略之前一定要看下启动的账户柜台进程(td)和行情源柜台进程(md)是否与策略中填写的柜台ID一致
+
 
 .. code-block:: cpp
     :linenos:
@@ -2569,6 +2579,12 @@ Order 订单回报
    * - update_time
      - int64_t
      - 订单更新时间(功夫时间)
+   * - trading_day
+     - int64_t
+     - 交易日
+   * - restore_time
+     - int64_t
+     - 恢复时间(用于重启td后恢复交易数据的时间戳)
    * - instrument_id
      - str
      - 合约ID
@@ -2660,6 +2676,12 @@ Trade 订单成交
    * - trade_time
      - int64_t
      - 成交时间(功夫时间)
+   * - trading_day
+     - int64_t
+     - 交易日
+   * - restore_time
+     - int64_t
+     - 恢复时间(用于重启td后恢复交易数据的时间戳)
    * - instrument_id
      - str
      - 合约ID
@@ -2715,6 +2737,9 @@ HistoryOrder 历史订单
    * - update_time
      - int64_t
      - 订单更新时间(功夫时间)
+   * - trading_day
+     - int64_t
+     - 交易日
    * - instrument_id
      - str
      - 合约ID
@@ -2806,6 +2831,9 @@ HistoryTrade 历史成交
    * - trade_time
      - int64_t
      - 成交时间(功夫时间)
+   * - trading_day
+     - int64_t
+     - 交易日
    * - instrument_id
      - str
      - 合约ID
